@@ -1,0 +1,13 @@
+# Visual Studio
+.vs/
+bin/
+obj/
+publish/
+*.user
+*.suo
+
+# User Data
+config.json
+*.pdf
+*.docx
+*.log
