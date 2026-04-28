@@ -42,16 +42,24 @@ using (var scope = app.Services.CreateScope())
     dbFactory.InitializeOnlineTable();
 }
 
+// Portu ortam değişkeninden al (Render vb. platformlar için)
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5050";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
+var app = builder.Build();
+
+// ... (DB tablosu baslatma kodlari ayni kaldi) ...
+
 app.UseCors("AllowAll");
 
-// wwwroot/ klasörünü statik dosya sunucusu olarak aç (web sitesi buradan yayınlanır)
+// Statik dosya sunumu
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
 app.UseAuthorization();
 app.MapControllers();
 
-// Kök URL'e istek gelince index.html'i sun
+// Kök URL ve diğer tüm rotaları index.html'e yönlendir (SPA desteği)
 app.MapFallbackToFile("index.html");
 
 app.Run();
