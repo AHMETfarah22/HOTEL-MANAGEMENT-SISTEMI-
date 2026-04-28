@@ -1,8 +1,12 @@
 using ORYS.WebApi.Database;
+using Microsoft.Extensions.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// CORS: Herhangi bir kaynaktan istek kabul et (local dev + network)
+// Kök dizindeki config.json dosyasini oku
+builder.Configuration.AddJsonFile("../config.json", optional: true, reloadOnChange: true);
+
+// CORS: Herhangi bir kaynaktan istek kabul et
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -16,7 +20,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// DB ayarlarını configuration'dan al
+// DB ayarlarini configuration'dan al
 builder.Services.AddSingleton<DbConnectionFactory>(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
@@ -32,23 +36,18 @@ builder.Services.AddSingleton<DbConnectionFactory>(sp =>
 // Mail Servisini Kaydet
 builder.Services.AddScoped<ORYS.WebApi.Services.IMailService, ORYS.WebApi.Services.MailService>();
 
-
-var app = builder.Build();
-
-// DB tablolarını başlatırken online_reservations tablosunu oluştur
-using (var scope = app.Services.CreateScope())
-{
-    var dbFactory = scope.ServiceProvider.GetRequiredService<DbConnectionFactory>();
-    dbFactory.InitializeOnlineTable();
-}
-
 // Portu ortam değişkeninden al (Render vb. platformlar için)
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5050";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 var app = builder.Build();
 
-// ... (DB tablosu baslatma kodlari ayni kaldi) ...
+// DB tablolarini baslat
+using (var scope = app.Services.CreateScope())
+{
+    var dbFactory = scope.ServiceProvider.GetRequiredService<DbConnectionFactory>();
+    dbFactory.InitializeOnlineTable();
+}
 
 app.UseCors("AllowAll");
 
