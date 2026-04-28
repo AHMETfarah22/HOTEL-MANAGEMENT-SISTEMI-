@@ -8,6 +8,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <!-- ORYS.WebApi bağımsız projedir, bu projeye dahil edilmemeli -->
+  <ItemGroup>
+    <Compile Remove="ORYS.WebApi\**\*.cs" />
+    <None Remove="ORYS.WebApi\**" />
+    <Content Remove="ORYS.WebApi\**" />
+    <EmbeddedResource Remove="ORYS.WebApi\**" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="MySql.Data" Version="9.2.0" />

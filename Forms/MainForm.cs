@@ -25,23 +25,83 @@ namespace ORYS.Forms
         private readonly Color cYellow = Color.FromArgb(218, 165, 32);
         private readonly Color cBlue = Color.FromArgb(70, 130, 180);
 
+        // Online talepler rozeti için label referansı ve bildirimler
+        private Label? lblOnlineBadge;
+        private Button? btnOnline;
+        private NotifyIcon notifyIcon = new NotifyIcon();
+        private System.Windows.Forms.Timer onlineTimer = new System.Windows.Forms.Timer();
+        private int lastPendingCount = 0;
+
         public MainForm()
         {
             InitializeComponent();
-            this.Load += (s, e) => { SetupNav(); ShowDashboard(); };
+            this.Load += (s, e) => { 
+                SetupNav(); 
+                ShowDashboard(); 
+                OnlineReservationHelper.EnsureTableExists(); 
+                UpdateOnlineBadge();
+                StartOnlineCheck(); 
+            };
             this.Resize += (s, e) => { if (activeNav?.Text.Contains("Dashboard") == true) ShowDashboard(); };
             pnlHeader.Paint += (s, e) => { using var p = new Pen(cGold, 2); e.Graphics.DrawLine(p, 0, pnlHeader.Height - 2, pnlHeader.Width, pnlHeader.Height - 2); };
+            
+            // Bildirim simgesi ayarları
+            notifyIcon.Icon = SystemIcons.Information;
+            notifyIcon.Visible = true;
+            notifyIcon.BalloonTipClicked += (s, e) => { 
+                if (btnOnline != null) SetActive(btnOnline); 
+                ShowOnlineReservations(); 
+            };
+        }
+
+        private void StartOnlineCheck()
+        {
+            onlineTimer.Interval = 10000; // 10 saniyede bir kontrol et
+            onlineTimer.Tick += (s, e) => UpdateOnlineBadge();
+            onlineTimer.Start();
         }
 
         private void SetupNav()
         {
+            // ── Online Talepler butonu (başta tanımla) ──
+            btnOnline = new Button
+            {
+                Text = "🌐 Online Talepler",
+                Font = new Font("Segoe UI", 9.5F),
+                Size = new Size(125, 40),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.Transparent,
+                ForeColor = Color.FromArgb(180, 190, 210),
+                Cursor = Cursors.Hand,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Name = "btnNavOnline"
+            };
+            btnOnline.FlatAppearance.BorderSize = 0;
+
+            // Rozet label (küçük sayı balonu)
+            lblOnlineBadge = new Label
+            {
+                Text = "0",
+                Size = new Size(18, 18),
+                BackColor = Color.FromArgb(220, 50, 50),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 7.5F, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Visible = false,
+                Name = "lblOnlineBadge"
+            };
+
             // Rol bazlı navbar görünürlüğü
             btnNavOdalar.Visible = !IsMuhasebe;           // Muhasebe oda yönetimi göremez
             btnNavRezervasyon.Visible = !IsMuhasebe;      // Muhasebe rezervasyon göremez
             btnNavPersonel.Visible = IsAdmin;             // Sadece Admin personel yönetir
             btnNavRaporlar.Visible = IsAdmin || IsMuhasebe; // Resepsiyonist rapor göremez
+            btnOnline.Visible = !IsMuhasebe;              // Muhasebe online talepleri göremez
 
-            var allBtns = new[] { btnNavDashboard, btnNavMisafirler, btnNavOdalar, btnNavRezervasyon, btnNavOdeme, btnNavPersonel, btnNavRaporlar };
+            // Butonları listeye ekle (Online talepler Dashboard'dan sonraya gelsin)
+            var allBtnsList = new List<Button> { btnNavDashboard, btnOnline, btnNavMisafirler, btnNavOdalar, btnNavRezervasyon, btnNavOdeme, btnNavPersonel, btnNavRaporlar };
+            var allBtns = allBtnsList.ToArray();
+
             foreach (var b in allBtns)
             {
                 if (!b.Visible) continue;
@@ -50,17 +110,65 @@ namespace ORYS.Forms
                 b.MouseLeave += (s, e) => { if (b != activeNav) b.ForeColor = Color.FromArgb(180, 190, 210); };
             }
 
-            // Çıkış butonu eventleri
+            // Butonları ve rozeti panele ekle
+            var navPanel = btnNavDashboard.Parent;
+            int idx = 0;
+            if (navPanel != null)
+            {
+                // Mevcut butonların konumlarını koru ama kaydır (btnOnline'ı yerleştir)
+                navPanel.Controls.Add(btnOnline);
+                
+                // Konumları güncelle (Dashboard 0, Online 1, ...)
+                foreach (var b in allBtnsList)
+                {
+                    if (!b.Visible && b != btnOnline) continue;
+                    b.Location = new Point(idx * 128, 15);
+                    idx++;
+                }
+
+                navPanel.Controls.Add(lblOnlineBadge);
+                lblOnlineBadge.BringToFront();
+                // Rozet konumunu btnOnline'ın sağ üstüne sabitle
+                lblOnlineBadge.Location = new Point(btnOnline.Location.X + btnOnline.Width - 25, btnOnline.Location.Y + 2);
+            }
+
+            // Çıkış butonu eventleri (Cikis en sonda kalsın)
+            btnNavCikis.Location = new Point(idx * 128, 15);
             btnNavCikis.Click += (s, e) => {
                 if (MessageBox.Show("Oturumu kapatmak istediğinize emin misiniz?", "Çıkış İşlemi", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                     this.Close();
             };
             btnNavCikis.MouseEnter += (s, e) => btnNavCikis.ForeColor = cRed;
             btnNavCikis.MouseLeave += (s, e) => btnNavCikis.ForeColor = Color.FromArgb(180, 190, 210);
+            
             SetActive(btnNavDashboard);
 
             // Başlıkta rol göster
             lblLogo.Text = "🏨 AFM GRAND";
+        }
+
+        /// <summary>
+        /// Bekleyen online talep sayısını rozette günceller.
+        /// </summary>
+        private void UpdateOnlineBadge()
+        {
+            try
+            {
+                int count = OnlineReservationHelper.GetPendingCount();
+                if (lblOnlineBadge != null)
+                {
+                    lblOnlineBadge.Text = count.ToString();
+                    lblOnlineBadge.Visible = count > 0;
+                }
+
+                // Yeni talep varsa bildirim gönder
+                if (count > lastPendingCount)
+                {
+                    notifyIcon.ShowBalloonTip(3000, "Yeni Online Rezervasyon", $"Şu an bekleyen {count} adet online rezervasyon talebi bulunmaktadır.", ToolTipIcon.Info);
+                }
+                lastPendingCount = count;
+            }
+            catch { }
         }
 
         private void SetActive(Button b)
@@ -73,6 +181,7 @@ namespace ORYS.Forms
         {
             if (txt.Contains("Dashboard")) ShowDashboard();
             else if (txt.Contains("Misafir")) ShowGuests();
+            else if (txt.Contains("Online")) ShowOnlineReservations();
             else if (txt.Contains("Oda")) ShowRooms();
             else if (txt.Contains("Rezerv")) ShowReservations();
             else if (txt.Contains("Ödeme") || txt.Contains("deme")) ShowPayments();
@@ -109,7 +218,6 @@ namespace ORYS.Forms
             ClearContent();
             pnlMainContent.Controls.Add(MakeTitle("📊 Dashboard"));
             int w = pnlMainContent.ClientSize.Width - 40;
-            int cardW = (w - 30) / 4;
 
             // === İSTATİSTİK KARTLARI ===
             int total = 0, occ = 0, avail = 0; decimal rev = 0;
@@ -121,11 +229,20 @@ namespace ORYS.Forms
             }
             catch { }
             try { rev = ReservationHelper.GetTodayRevenue(); } catch { }
+            int onlinePending = OnlineReservationHelper.GetPendingCount();
 
+            int cardW = (w - 40) / 5;  // 5 kart için genişlik
             pnlMainContent.Controls.Add(MakeStatCard("🛏️", "Toplam Oda", total.ToString(), 20));
             pnlMainContent.Controls.Add(MakeStatCard("🛌", "Dolu Oda", occ.ToString(), 20 + cardW + 10));
             pnlMainContent.Controls.Add(MakeStatCard("🔑", "Müsait Oda", avail.ToString(), 20 + (cardW + 10) * 2));
             pnlMainContent.Controls.Add(MakeStatCard("💰", "Günlük Gelir", $"₺{rev:N0}", 20 + (cardW + 10) * 3));
+            // Online talepler kartı (tıklanabilir)
+            var onlineCard = MakeStatCard("🌐", "Online Talep", onlinePending.ToString(), 20 + (cardW + 10) * 4);
+            onlineCard.Cursor = Cursors.Hand;
+            if (onlinePending > 0) onlineCard.BackColor = Color.FromArgb(80, 20, 20);
+            onlineCard.Click += (s, e) => { ShowOnlineReservations(); };
+            foreach (Control c in onlineCard.Controls) c.Click += (s2, e2) => { ShowOnlineReservations(); };
+            pnlMainContent.Controls.Add(onlineCard);
 
             // === ODA DURUMU GRID ===
             int roomGridBottom = 420; // varsayılan
@@ -180,7 +297,9 @@ namespace ORYS.Forms
                 dgCI.Columns.Add(btnColCI);
                 var checkIns = ReservationHelper.GetTodayCheckIns();
                 foreach (var r in checkIns) {
-                    int idx = dgCI.Rows.Add(r.RoomNumber, r.GuestName, $"{r.CheckInDate:dd.MM.yyyy} - {r.CheckOutDate:dd.MM.yyyy}");
+                    string displayName = r.GuestName;
+                    if (r.Notes != null && r.Notes.Contains("[Online #")) displayName = "🌐 " + displayName;
+                    int idx = dgCI.Rows.Add(r.RoomNumber, displayName, $"{r.CheckInDate:dd.MM.yyyy} - {r.CheckOutDate:dd.MM.yyyy}");
                     dgCI.Rows[idx].Cells["Islem"].Value = r.Status == "GirisYapildi" ? "✅ Yapıldı" : "Giriş Yap";
                 }
                 if (checkIns.Count == 0) dgCI.Rows.Add("", "Bugün giriş yok", "", "");
@@ -791,20 +910,34 @@ namespace ORYS.Forms
                 decimal tryAmt = nAmt.Value * currentRate;
                 lblTlvPreview.Text = $"Tahsil Edilecek: ₺{tryAmt:N0}";
             };
-            cmbCurr.SelectedIndexChanged += (s, e) => updateCalc();
-            nAmt.ValueChanged += (s, e) => updateCalc();
 
-            List<Reservation> resList = new(); try { resList = ReservationHelper.GetActiveReservations(); } catch { }
-            foreach (var r in resList) cmbRes.Items.Add($"#{r.Id} - {r.GuestName} (Oda {r.RoomNumber})"); 
-            
-            cmbRes.SelectedIndexChanged += (s, e) => {
+            List<Reservation> resList = new(); 
+            try { resList = ReservationHelper.GetActiveReservations(); } catch { }
+
+            Action setAmountFromBalance = () => {
                 if (cmbRes.SelectedIndex >= 0) {
                     var r = resList[cmbRes.SelectedIndex];
                     decimal odenilen = PaymentHelper.GetTotalPaidForReservation(r.Id);
                     decimal kalan = r.TotalPrice - odenilen;
-                    if (kalan > 0 && cmbCurr.SelectedIndex == 0) nAmt.Value = kalan <= nAmt.Maximum ? Math.Round(kalan, 0) : nAmt.Maximum;
-                    else if (kalan <= 0) nAmt.Value = nAmt.Minimum;
+                    if (kalan > 0) {
+                        decimal foreignAmount = currentRate > 0 ? (kalan / currentRate) : kalan;
+                        nAmt.Value = foreignAmount <= nAmt.Maximum ? Math.Round(foreignAmount, 2) : nAmt.Maximum;
+                    }
+                    else nAmt.Value = 0;
                 }
+            };
+
+            cmbCurr.SelectedIndexChanged += (s, e) => {
+                updateCalc();
+                setAmountFromBalance();
+            };
+            nAmt.ValueChanged += (s, e) => updateCalc();
+
+            foreach (var r in resList) cmbRes.Items.Add($"#{r.Id} - {r.GuestName} (Oda {r.RoomNumber})"); 
+            
+            cmbRes.SelectedIndexChanged += (s, e) => {
+                updateCalc();
+                setAmountFromBalance();
             };
 
             if (preSelectedResId > 0) {
@@ -1000,5 +1133,247 @@ namespace ORYS.Forms
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e) { base.OnFormClosing(e); }
+
+        // ========== ONLINE REZERVASYONLAR ==========
+        private void ShowOnlineReservations()
+        {
+            ClearContent();
+            UpdateOnlineBadge();
+
+            pnlMainContent.Controls.Add(MakeTitle("🌐 Online Rezervasyon Talepleri"));
+
+            int w = pnlMainContent.ClientSize.Width - 40;
+
+            // Filtre Butonları
+            var btnAll      = MakeBtn("📋 Tümü",       cBlue,             20, 55); btnAll.Size = new Size(110, 36);
+            var btnPending  = MakeBtn("⏳ Bekliyor",    Color.FromArgb(180,120,0), 140, 55); btnPending.Size = new Size(110, 36);
+            var btnApproved = MakeBtn("✅ Onaylındı",   cGreen,           260, 55); btnApproved.Size = new Size(120, 36);
+            var btnRejected = MakeBtn("❌ Reddedildi",  cRed,             390, 55); btnRejected.Size = new Size(120, 36);
+            var btnRefresh  = MakeBtn("🔄 Yenile",      cCard,            520, 55); btnRefresh.Size = new Size(100, 36);
+
+            pnlMainContent.Controls.AddRange(new Control[] { btnAll, btnPending, btnApproved, btnRejected, btnRefresh });
+
+            // API adresi bilgi label
+            var lblApiInfo = new Label
+            {
+                Text = "🌐 Web sitesi: http://localhost:5050  |  API: http://localhost:5050/api",
+                Font = new Font("Segoe UI", 9F, FontStyle.Italic),
+                ForeColor = Color.FromArgb(120, 160, 200),
+                AutoSize = true,
+                Location = new Point(w - 480, 65),
+                BackColor = Color.Transparent
+            };
+            pnlMainContent.Controls.Add(lblApiInfo);
+
+            // DataGrid
+            var dg = MakeGrid(105, 500);
+            dg.Size = new Size(w, pnlMainContent.ClientSize.Height - 230);
+            dg.Columns.AddRange(new DataGridViewColumn[]
+            {
+                new DataGridViewTextBoxColumn { Name = "Id",      HeaderText = "#",          Width = 40 },
+                new DataGridViewTextBoxColumn { Name = "Tarih",   HeaderText = "Talep Tarihi", Width = 130 },
+                new DataGridViewTextBoxColumn { Name = "Ad",      HeaderText = "Ad Soyad" },
+                new DataGridViewTextBoxColumn { Name = "Email",   HeaderText = "E-posta",    Width = 160 },
+                new DataGridViewTextBoxColumn { Name = "Tel",     HeaderText = "Telefon",    Width = 110 },
+                new DataGridViewTextBoxColumn { Name = "Oda",     HeaderText = "Oda",        Width = 60 },
+                new DataGridViewTextBoxColumn { Name = "Giris",   HeaderText = "Giriş",      Width = 90 },
+                new DataGridViewTextBoxColumn { Name = "Cikis",   HeaderText = "Çıkış",      Width = 90 },
+                new DataGridViewTextBoxColumn { Name = "Gece",    HeaderText = "Gece",       Width = 45 },
+                new DataGridViewTextBoxColumn { Name = "Fiyat",   HeaderText = "Tutar ₺",    Width = 90 },
+                new DataGridViewTextBoxColumn { Name = "Durum",   HeaderText = "Durum",      Width = 100 },
+            });
+            pnlMainContent.Controls.Add(dg);
+
+            // İşlem Butonları (seçili satır)
+            var pnlActions = new Panel
+            {
+                Location = new Point(20, pnlMainContent.ClientSize.Height - 120),
+                Size = new Size(w, 110),
+                BackColor = Color.FromArgb(18, 25, 45)
+            };
+            pnlActions.Paint += (s, e) => { using var pen = new Pen(cGold, 1); e.Graphics.DrawLine(pen, 0, 0, pnlActions.Width, 0); };
+
+            var lblDetail = new Label
+            {
+                Text = "Listeden bir talep seçin ve işlem yapın.",
+                Font = new Font("Segoe UI", 9.5F),
+                ForeColor = Color.FromArgb(160, 180, 220),
+                AutoSize = true,
+                Location = new Point(10, 10),
+                BackColor = Color.Transparent
+            };
+            var btnApprove = MakeBtn("✅ ONAYLA", cGreen, 10, 40);
+            var btnReject  = MakeBtn("❌ REDDET", cRed,   170, 40);
+            var btnDetail  = MakeBtn("🔍 Detay",  cBlue,  330, 40);
+            btnApprove.Enabled = false;
+            btnReject.Enabled  = false;
+            btnDetail.Enabled  = false;
+            pnlActions.Controls.AddRange(new Control[] { lblDetail, btnApprove, btnReject, btnDetail });
+            pnlMainContent.Controls.Add(pnlActions);
+
+            // Yükleme
+            string? currentFilter = null;
+            List<OnlineReservationHelper.OnlineReservation> onlineList = new();
+
+            Action<string?> loadList = (filter) =>
+            {
+                currentFilter = filter;
+                dg.Rows.Clear();
+                onlineList = OnlineReservationHelper.GetAll(filter);
+                UpdateOnlineBadge();
+
+                foreach (var r in onlineList)
+                {
+                    int idx = dg.Rows.Add(
+                        r.Id,
+                        r.CreatedAt.ToString("dd.MM.yyyy HH:mm"),
+                        r.FullName,
+                        r.Email,
+                        r.Phone ?? "-",
+                        r.RoomNumber,
+                        r.CheckInDate.ToString("dd.MM.yyyy"),
+                        r.CheckOutDate.ToString("dd.MM.yyyy"),
+                        r.NightCount,
+                        $"₺{r.TotalPrice:N0}",
+                        r.Status switch
+                        {
+                            "Bekliyor"    => "⏳ Bekliyor",
+                            "Onaylandi"   => "✅ Onaylandı",
+                            "Reddedildi"  => "❌ Reddedildi",
+                            _             => r.Status
+                        }
+                    );
+
+                    Color sc = r.Status switch
+                    {
+                        "Bekliyor"   => cYellow,
+                        "Onaylandi"  => cGreen,
+                        "Reddedildi" => cRed,
+                        _            => Color.Gray
+                    };
+                    dg.Rows[idx].Cells["Durum"].Style.BackColor = sc;
+                    dg.Rows[idx].Cells["Durum"].Style.ForeColor = Color.White;
+                }
+
+                lblDetail.Text = $"Toplam {onlineList.Count} kayıt. Seçmek için tıklayın.";
+            };
+
+            loadList(null);
+
+            // Filtre butonları
+            btnAll.Click      += (s, e) => loadList(null);
+            btnPending.Click  += (s, e) => loadList("Bekliyor");
+            btnApproved.Click += (s, e) => loadList("Onaylandi");
+            btnRejected.Click += (s, e) => loadList("Reddedildi");
+            btnRefresh.Click  += (s, e) => loadList(currentFilter);
+
+            // Satır seçimi
+            dg.SelectionChanged += (s, e) =>
+            {
+                bool hasSelection = dg.SelectedRows.Count > 0;
+                if (!hasSelection) { btnApprove.Enabled = false; btnReject.Enabled = false; btnDetail.Enabled = false; return; }
+
+                int idx2 = dg.SelectedRows[0].Index;
+                if (idx2 < 0 || idx2 >= onlineList.Count) return;
+                var sel = onlineList[idx2];
+                bool isPending = sel.Status == "Bekliyor";
+                btnApprove.Enabled = isPending;
+                btnReject.Enabled  = isPending;
+                btnDetail.Enabled  = true;
+                lblDetail.Text = $"Seçili: {sel.FullName} | Oda {sel.RoomNumber} | {sel.CheckInDate:dd.MM.yyyy} - {sel.CheckOutDate:dd.MM.yyyy} | ₺{sel.TotalPrice:N0}";
+            };
+
+            // ONAYLA
+            btnApprove.Click += (s, e) =>
+            {
+                if (dg.SelectedRows.Count == 0) return;
+                int idx2 = dg.SelectedRows[0].Index;
+                if (idx2 < 0 || idx2 >= onlineList.Count) return;
+                var sel = onlineList[idx2];
+
+                var confirm = MessageBox.Show(
+                    $"'{sel.FullName}' adlı misafirin rezervasyonu onaylanacak.\n" +
+                    $"Oda: {sel.RoomNumber} | {sel.CheckInDate:dd.MM.yyyy} - {sel.CheckOutDate:dd.MM.yyyy}\n" +
+                    $"Tutar: ₺{sel.TotalPrice:N0}\n\nOnaylamak istediğinizden emin misiniz?",
+                    "Rezervasyon Onayla", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+                if (confirm != DialogResult.Yes) return;
+
+                var (success, msg) = OnlineReservationHelper.Approve(sel);
+                MessageBox.Show(msg, success ? "✅ Başarılı" : "❌ Hata",
+                    MessageBoxButtons.OK, success ? MessageBoxIcon.Information : MessageBoxIcon.Error);
+                loadList(currentFilter);
+            };
+
+            // REDDET
+            btnReject.Click += (s, e) =>
+            {
+                if (dg.SelectedRows.Count == 0) return;
+                int idx2 = dg.SelectedRows[0].Index;
+                if (idx2 < 0 || idx2 >= onlineList.Count) return;
+                var sel = onlineList[idx2];
+
+                // Red sebebi sor
+                var rf = new Form
+                {
+                    Text = "Red Sebebi", Size = new Size(400, 200),
+                    StartPosition = FormStartPosition.CenterParent,
+                    BackColor = cCard, ForeColor = Color.White,
+                    FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false
+                };
+                var tReason = new TextBox
+                {
+                    Location = new Point(15, 15), Size = new Size(355, 60),
+                    Multiline = true, Font = new Font("Segoe UI", 10F),
+                    BackColor = Color.FromArgb(25, 40, 75), ForeColor = Color.White,
+                    BorderStyle = BorderStyle.FixedSingle,
+                    PlaceholderText = "Red sebebini yazın (isteğe bağlı)..."
+                };
+                var btnOkRej = MakeBtn("❌ Reddet", cRed, 15, 85);
+                var btnCnlRej = MakeBtn("İptal", cCard, 175, 85);
+                rf.Controls.AddRange(new Control[] { tReason, btnOkRej, btnCnlRej });
+                bool rejected = false;
+                btnOkRej.Click += (s2, e2) => { rejected = true; rf.Close(); };
+                btnCnlRej.Click += (s2, e2) => rf.Close();
+                rf.ShowDialog();
+
+                if (!rejected) return;
+                var (success, msg) = OnlineReservationHelper.Reject(sel.Id, tReason.Text.Trim());
+                MessageBox.Show(msg, success ? "Reddedildi" : "Hata",
+                    MessageBoxButtons.OK, success ? MessageBoxIcon.Information : MessageBoxIcon.Error);
+                loadList(currentFilter);
+            };
+
+            // DETAY
+            btnDetail.Click += (s, e) =>
+            {
+                if (dg.SelectedRows.Count == 0) return;
+                int idx2 = dg.SelectedRows[0].Index;
+                if (idx2 < 0 || idx2 >= onlineList.Count) return;
+                var sel = onlineList[idx2];
+
+                string detail =
+                    $"━━━━━━━━━ Online Rezervasyon #{sel.Id} ━━━━━━━━━\n\n" +
+                    $"👤 Ad Soyad  : {sel.FullName}\n" +
+                    $"📧 E-posta   : {sel.Email}\n" +
+                    $"📞 Telefon   : {sel.Phone ?? "-"}\n" +
+                    $"🪪 TC No     : {sel.TcNo ?? "-"}\n" +
+                    $"🌍 Uyruk     : {sel.Nationality}\n\n" +
+                    $"🏨 Oda       : {sel.RoomNumber} ({sel.RoomTypeName})\n" +
+                    $"📅 Giriş     : {sel.CheckInDate:dd.MM.yyyy}\n" +
+                    $"📅 Çıkış     : {sel.CheckOutDate:dd.MM.yyyy}\n" +
+                    $"🌙 Gece      : {sel.NightCount}\n" +
+                    $"👥 Kişi      : {sel.Adults} yetişkin, {sel.Children} çocuk\n" +
+                    $"💰 Tutar     : ₺{sel.TotalPrice:N0}\n\n" +
+                    $"📝 Notlar    : {sel.Notes ?? "-"}\n" +
+                    $"📊 Durum     : {sel.Status}\n" +
+                    (sel.RejectReason != null ? $"🚫 Red Sebebi: {sel.RejectReason}\n" : "") +
+                    (sel.InternalResId != null ? $"🔗 Rezervasyon ID: #{sel.InternalResId}\n" : "") +
+                    $"\n🕐 Talep Zamanı: {sel.CreatedAt:dd.MM.yyyy HH:mm}";
+
+                MessageBox.Show(detail, $"Talep Detayı — {sel.FullName}",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            };
+        }
     }
 }

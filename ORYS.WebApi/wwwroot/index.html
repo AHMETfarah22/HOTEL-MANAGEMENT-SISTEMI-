@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AFM Grand Hotel — Lüks Konaklamanın Adresi</title>
+  <meta name="description" content="AFM Grand Hotel İstanbul — 5 yıldızlı konfor, eşsiz manzara ve unutulmaz deneyim."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header" id="header">
+  <div class="header-inner">
+    <a href="#" class="logo">
+      <div class="logo-emblem">✦</div>
+      <div class="logo-text">
+        <span class="logo-main">AFM GRAND</span>
+        <span class="logo-sub">HOTEL & RESORT</span>
+      </div>
+    </a>
+    <nav class="nav">
+      <a href="#about">Hakkımızda</a>
+      <a href="#rooms-section">Odalar</a>
+      <a href="#amenities">Olanaklar</a>
+      <a href="#contact">İletişim</a>
+      <button onclick="openPortal()" class="nav-portal-btn">👤 Profilim</button>
+      <a href="javascript:void(0)" class="nav-admin" onclick="showToast('Yönetim paneli masaüstü uygulamasından erişilebilir.','')" title="Masaüstü uygulaması gerekir">⚙ Yönetim</a>
+    </nav>
+    <a href="#rooms-section" class="btn-header-gold">Rezervasyon Yap</a>
+    <button class="hamburger" id="hamburger" onclick="toggleMenu()">☰</button>
+  </div>
+  <div class="mobile-nav" id="mobileNav">
+    <a href="#rooms-section" onclick="toggleMenu()">Odalar</a>
+    <a href="#amenities" onclick="toggleMenu()">Olanaklar</a>
+    <a href="#contact" onclick="toggleMenu()">İletişim</a>
+    <a href="javascript:openPortal()" onclick="toggleMenu()">👤 Rezervasyonlarım (Profil)</a>
+    <a href="javascript:void(0)" onclick="toggleMenu(); showToast('Yönetim paneli masaüstü uygulamasından erişilebilir.','');">⚙ Yönetim</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero" id="top">
+  <div class="hero-bg" id="heroBg"></div>
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <div class="hero-badge">✦ İstanbul'un En Seçkin Adresi ✦</div>
+    <h1 class="hero-title">Lüksün <em>Ötesinde</em><br/>Bir Deneyim</h1>
+    <p class="hero-sub">Boğaz manzarası eşliğinde, 5 yıldızlı konforla unutulmaz anlar yaşayın.</p>
+    <div class="hero-actions">
+      <button class="btn-hero-primary" onclick="scrollToRooms()">✦ Odaları Keşfet</button>
+      <button class="btn-hero-secondary" onclick="document.getElementById('search-bar').scrollIntoView({behavior:'smooth'})">Tarih Seç →</button>
+    </div>
+  </div>
+  <div class="hero-scroll" onclick="scrollToRooms()">
+    <div class="hero-scroll-line"></div>
+    <span>Aşağı Kaydır</span>
+  </div>
+  <div class="hero-slides-nav">
+    <button class="hslide-dot active" onclick="goSlide(0)"></button>
+    <button class="hslide-dot" onclick="goSlide(1)"></button>
+    <button class="hslide-dot" onclick="goSlide(2)"></button>
+  </div>
+</section>
+
+<!-- SEARCH BAR -->
+<section class="search-section" id="search-bar">
+  <div class="search-container">
+    <div class="search-card">
+      <div class="search-field-wrap">
+        <label>📅 Giriş Tarihi</label>
+        <input type="date" id="checkIn"/>
+      </div>
+      <div class="search-divider"></div>
+      <div class="search-field-wrap">
+        <label>📅 Çıkış Tarihi</label>
+        <input type="date" id="checkOut"/>
+      </div>
+      <div class="search-divider"></div>
+      <div class="search-field-wrap">
+        <label>👤 Misafir Sayısı</label>
+        <select id="guestCount">
+          <option value="1">1 Misafir</option>
+          <option value="2" selected>2 Misafir</option>
+          <option value="3">3 Misafir</option>
+          <option value="4">4 Misafir</option>
+        </select>
+      </div>
+      <button class="btn-search-gold" id="searchBtn" onclick="searchRooms()">
+        <span id="searchBtnText">Müsait Oda Ara</span>
+        <span id="searchSpinner" class="spinner hidden"></span>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section class="about-section" id="about">
+  <div class="about-container">
+    <div class="about-visuals">
+      <div class="about-img-stack">
+        <img src="https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=700&q=90" alt="Lobby" class="about-main-img"/>
+        <img src="https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=400&q=80" alt="Pool" class="about-float-img"/>
+      </div>
+      <div class="about-exp-badge">
+        <span class="exp-num">18</span>
+        <span class="exp-label">Yıllık<br/>Mükemmellik</span>
+      </div>
+    </div>
+    <div class="about-content">
+      <div class="eyebrow-gold">Hakkımızda</div>
+      <h2 class="section-title">İstanbul'un Kalbinde<br/><em>Eşsiz Lüks</em></h2>
+      <p>Boğaz manzarası eşliğinde, tarihi İstanbul silüetiyle buluşan modern mimarimiz size olağanüstü bir konaklama deneyimi sunuyor. Her ayrıntı sizin için tasarlandı.</p>
+      <div class="about-stats-row">
+        <div class="astat"><strong>40</strong><span>Lüks Oda</span></div>
+        <div class="astat"><strong>4</strong><span>Kat</span></div>
+        <div class="astat"><strong>5★</strong><span>Yıldız</span></div>
+        <div class="astat"><strong>7/24</strong><span>Hizmet</span></div>
+      </div>
+      <button class="btn-gold-outline" onclick="scrollToRooms()">Odaları İncele →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ROOMS -->
+<section class="rooms-section" id="rooms-section">
+  <div class="rooms-container">
+    <div class="rooms-header">
+      <div class="eyebrow-gold center" id="rooms-eyebrow">Oda Koleksiyonu</div>
+      <h2 class="section-title center" id="rooms-title">Konforunuzu <em>Seçin</em></h2>
+      <p class="rooms-subtitle" id="rooms-subtitle">Tarih seçerek müsait odaları filtreleyin ya da tüm odalarımıza göz atın</p>
+    </div>
+
+    <!-- Filtre Çubuğu -->
+    <div class="filter-strip" id="filterStrip">
+      <button class="flt-btn active" data-f="all"      onclick="filterRooms('all')">Tümü</button>
+      <button class="flt-btn"       data-f="Standart"  onclick="filterRooms('Standart')">Standart</button>
+      <button class="flt-btn"       data-f="Deluxe"    onclick="filterRooms('Deluxe')">Deluxe</button>
+      <button class="flt-btn"       data-f="Suite"     onclick="filterRooms('Suite')">Suite</button>
+      <button class="flt-btn"       data-f="Aile"      onclick="filterRooms('Aile')">Aile</button>
+      <button class="flt-btn"       data-f="Kral"      onclick="filterRooms('Kral')">Kral Dairesi</button>
+    </div>
+
+    <!-- Loading -->
+    <div id="rooms-loading" class="rooms-loading-wrap">
+      <div class="gold-loader"></div>
+      <p>Odalar yükleniyor…</p>
+    </div>
+
+    <!-- Grid -->
+    <div id="rooms-grid" class="rooms-grid"></div>
+
+    <!-- Bulunamadı -->
+    <div id="no-rooms" class="no-rooms-wrap hidden">
+      <div class="no-rooms-icon">🛏️</div>
+      <h3>Oda Bulunamadı</h3>
+      <p>Seçtiğiniz kriterlerde müsait oda yok. Lütfen tarihleri veya filtreyi değiştirin.</p>
+      <button class="btn-outline-gold" onclick="resetSearch()">Tümünü Göster</button>
+    </div>
+  </div>
+</section>
+
+<!-- AMENITIES -->
+<section class="amenities-section" id="amenities">
+  <div class="amenities-bg-img" style="background-image:url('https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=1600&q=70')"></div>
+  <div class="amenities-overlay"></div>
+  <div class="amenities-inner">
+    <div class="eyebrow-gold center light">Otel Olanakları</div>
+    <h2 class="section-title center light">Her Şey Sizin İçin</h2>
+    <div class="amenities-grid">
+      <div class="amenity-card"><span class="am-icon">🍽️</span><strong>Fine Dining</strong><p>Panoramik Restoran</p></div>
+      <div class="amenity-card"><span class="am-icon">🧖</span><strong>Spa & Wellness</strong><p>Tam Donanımlı Spa</p></div>
+      <div class="amenity-card"><span class="am-icon">🏊</span><strong>Infinity Pool</strong><p>Teras Havuzu</p></div>
+      <div class="amenity-card"><span class="am-icon">🏋️</span><strong>Fitness</strong><p>Modern Ekipman</p></div>
+      <div class="amenity-card"><span class="am-icon">🅿️</span><strong>Vale Park</strong><p>7/24 Otopark</p></div>
+      <div class="amenity-card"><span class="am-icon">✈️</span><strong>VIP Transfer</strong><p>Havalimanı Servisi</p></div>
+      <div class="amenity-card"><span class="am-icon">📶</span><strong>Ultra WiFi</strong><p>5G Hız</p></div>
+      <div class="amenity-card"><span class="am-icon">🛎️</span><strong>Concierge</strong><p>Kişisel Asistan</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- REVIEWS -->
+<section class="reviews-section">
+  <div class="reviews-inner">
+    <div class="eyebrow-gold center">Misafir Yorumları</div>
+    <h2 class="section-title center">Deneyimlerini <em>Anlatsınlar</em></h2>
+    <div class="reviews-grid">
+      <div class="review-card"><div class="review-stars">★★★★★</div><p>"İstanbul'da kaldığım en muhteşem otel. Boğaz manzarası inanılmazdı."</p><div class="reviewer"><img src="https://i.pravatar.cc/48?img=11" alt=""/><span>Ahmet Y. · İstanbul</span></div></div>
+      <div class="review-card"><div class="review-stars">★★★★★</div><p>"The suite was absolutely breathtaking. Every detail was perfection."</p><div class="reviewer"><img src="https://i.pravatar.cc/48?img=5" alt=""/><span>Sarah J. · New York</span></div></div>
+      <div class="review-card"><div class="review-stars">★★★★★</div><p>"Außergewöhnliches Erlebnis! Die Reservierung online war kinderleicht."</p><div class="reviewer"><img src="https://i.pravatar.cc/48?img=20" alt=""/><span>Klaus M. · Berlin</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section class="contact-section" id="contact">
+  <div class="contact-inner">
+    <div class="contact-info">
+      <div class="eyebrow-gold">İletişim</div>
+      <h2 class="section-title">Size Nasıl <em>Yardımcı Olabiliriz?</em></h2>
+      <div class="cinfo-list">
+        <div class="cinfo-item"><span>📍</span><div><strong>Adres</strong><p>Beyoğlu, İstanbul, Türkiye</p></div></div>
+        <div class="cinfo-item"><span>📞</span><div><strong>Telefon</strong><p>+90 (212) 555 00 00</p></div></div>
+        <div class="cinfo-item"><span>📧</span><div><strong>E-posta</strong><p>rezervasyon@afmgrand.com</p></div></div>
+        <div class="cinfo-item"><span>🕐</span><div><strong>Resepsiyon</strong><p>7/24 hizmetinizdeyiz</p></div></div>
+      </div>
+    </div>
+    <div class="contact-map-wrap">
+      <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3009.366!2d28.9745!3d41.0355!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNDHCsDAyJzEzLjgiTiAyOMKwNTgnMjguMiJF!5e0!3m2!1str!2str!4v1234567890"
+        width="100%" height="320" style="border:0;border-radius:16px;filter:invert(90%) hue-rotate(180deg)" allowfullscreen loading="lazy"></iframe>
+    </div>
+  </div>
+</section>
+
+
+
+<!-- ════ FOOTER ════ -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-logo">
+      <div class="logo-emblem small">✦</div>
+      <div class="logo-text"><span class="logo-main">AFM GRAND</span><span class="logo-sub">HOTEL & RESORT</span></div>
+    </div>
+    <div class="footer-links"><h4>Hızlı Erişim</h4><a href="#rooms-section">Odalar</a><a href="#amenities">Olanaklar</a><a href="#contact">İletişim</a></div>
+    <div class="footer-links"><h4>Politikalar</h4><a href="#">Gizlilik</a><a href="#">İptal Koşulları</a><a href="#">Kullanım Şartları</a></div>
+  </div>
+  <div class="footer-bottom"><p>© 2026 AFM Grand Hotel. Tüm hakları saklıdır.</p><p>ORYS Otel Yönetim Sistemi</p></div>
+</footer>
+
+<!-- ════ ODA DETAY + REZERVASYON FULL MODAL ════ -->
+<div class="full-modal hidden" id="fullModal">
+  <div class="full-modal-inner">
+    <!-- Sol: Oda Görseli ve Bilgisi -->
+    <div class="fmodal-left" id="fmodalLeft">
+      <button class="fmodal-close" onclick="closeFModal()">✕</button>
+      <img class="fmodal-img" id="fmodalImg" src="" alt=""/>
+      <div class="fmodal-img-overlay"></div>
+      <div class="fmodal-room-info">
+        <div class="fmodal-badge" id="fmodalBadge"></div>
+        <div class="fmodal-room-name" id="fmodalRoomName"></div>
+        <div class="fmodal-features" id="fmodalFeatures"></div>
+        <div class="fmodal-price-block">
+          <span class="fmodal-price" id="fmodalPrice"></span>
+          <span class="fmodal-per">₺ / gece</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sağ: Rezervasyon Formu -->
+    <div class="fmodal-right" id="fmodalRight">
+      <div class="fmodal-form-wrap" id="fmodalFormWrap">
+        <div class="fmodal-form-title">
+          <span class="gold-star">✦</span>
+          <h2>Rezervasyon Yap</h2>
+        </div>
+
+        <!-- Tarihler -->
+        <div class="form-section-title">📅 Konaklama Tarihleri</div>
+        <div class="form-row-2">
+          <div class="fg">
+            <label>Giriş Tarihi *</label>
+            <input type="date" id="rCheckIn"/>
+          </div>
+          <div class="fg">
+            <label>Çıkış Tarihi *</label>
+            <input type="date" id="rCheckOut"/>
+          </div>
+        </div>
+
+        <div class="form-section-title" style="margin-top:20px">👤 Kişisel Bilgiler</div>
+        <div class="fg">
+          <label>Ad Soyad *</label>
+          <input type="text" id="rName" placeholder="Örn: Ahmet Yılmaz"/>
+        </div>
+        <div class="form-row-2">
+          <div class="fg">
+            <label>E-posta *</label>
+            <input type="email" id="rEmail" placeholder="email@ornek.com"/>
+          </div>
+          <div class="fg">
+            <label>Telefon</label>
+            <input type="tel" id="rPhone" placeholder="05XX XXX XX XX"/>
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div class="fg">
+            <label>TC Kimlik No</label>
+            <input type="text" id="rTc" maxlength="11" placeholder="Yabancı ise boş"/>
+          </div>
+          <div class="fg">
+            <label>Uyruk</label>
+            <select id="rNat">
+              <option value="Türkiye" selected>🇹🇷 Türkiye</option>
+              <option value="USA">🇺🇸 Amerika</option>
+              <option value="Germany">🇩🇪 Almanya</option>
+              <option value="UK">🇬🇧 İngiltere</option>
+              <option value="France">🇫🇷 Fransa</option>
+              <option value="Russia">🇷🇺 Rusya</option>
+              <option value="Other">🌍 Diğer</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div class="fg">
+            <label>Yetişkin</label>
+            <select id="rAdults"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option></select>
+          </div>
+          <div class="fg">
+            <label>Çocuk</label>
+            <select id="rChildren"><option value="0" selected>0</option><option value="1">1</option><option value="2">2</option></select>
+          </div>
+        </div>
+        <div class="fg">
+          <label>Özel İstekler</label>
+          <textarea id="rNotes" rows="2" placeholder="Kat tercihi, erken giriş, ekstra yatak…"></textarea>
+        </div>
+
+        <!-- Fiyat Özeti -->
+        <div class="price-summary" id="priceSummary"></div>
+
+        <button class="btn-reserve-big" id="submitBtn" onclick="submitReservation()">
+          <span id="submitText">✦ Rezervasyonu Tamamla</span>
+          <span id="submitSpinner" class="spinner hidden"></span>
+        </button>
+        <button class="btn-cancel-modal" onclick="closeFModal()">Vazgeç</button>
+      </div>
+
+      <!-- Başarı Ekranı -->
+      <div class="fmodal-success hidden" id="fmodalSuccess">
+        <div class="success-circle">✓</div>
+        <h2>Rezervasyonunuz Alındı!</h2>
+        <p id="successMsg"></p>
+        <div class="success-detail-box" id="successDetail"></div>
+        <div class="success-notes">
+          <p>📧 Onay e-posta adresinize gönderilecektir.</p>
+          <p>⏳ Resepsiyonumuz en kısa sürede iletişime geçecek.</p>
+        </div>
+        <button class="btn-reserve-big" onclick="closeFModal()">Kapat &amp; Yeni Arama →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ MÜŞTERİ PORTALI (Giriş & Geçmiş) ════ -->
+<div class="portal-overlay hidden" id="portalOverlay">
+  <div class="portal-container">
+    <button class="portal-close" onclick="closePortal()">✕</button>
+    
+    <!-- Giriş Ekranı -->
+    <div id="portalLogin" class="portal-view">
+      <div class="portal-header">
+        <div class="logo-emblem">H</div>
+        <h2>Müşteri Girişi</h2>
+        <p>E-posta adresinizle giriş yaparak tüm rezervasyonlarınızı yönetin.</p>
+      </div>
+      <div class="portal-form">
+        <div class="fg">
+          <label>E-posta Adresiniz</label>
+          <input type="email" id="pEmail" placeholder="ornek@mail.com"/>
+        </div>
+        <div class="fg" style="margin-top: 15px;">
+          <label>Rezervasyon Kodu (Opsiyonel)</label>
+          <input type="text" id="pCode" placeholder="AFM123456"/>
+        </div>
+        <button class="btn-hero-primary" style="margin-top: 25px;" onclick="portalActionLogin()">Sorgula / Giriş Yap →</button>
+      </div>
+    </div>
+
+    <!-- Panel Ekranı -->
+    <div id="portalDashboard" class="portal-view hidden">
+      <div class="portal-header">
+        <h2 id="pWelcome">Hoş Geldiniz</h2>
+        <p>Rezervasyon geçmişiniz ve aktif talepleriniz aşağıda listelenmiştir.</p>
+      </div>
+      <div class="portal-stats">
+        <div class="pstat">
+          <span id="pTotalRes">0</span>
+          <label>Toplam Talep</label>
+        </div>
+        <div class="pstat">
+          <span id="pActiveStatus">--</span>
+          <label>Son Durum</label>
+        </div>
+      </div>
+      <div class="portal-list" id="pList">
+        <!-- Rezervasyonlar buraya gelecek -->
+      </div>
+      <button class="btn-portal-logout" onclick="portalActionLogout()">Oturumu Kapat</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+<script src="js/app.js"></script>
+</body>
+</html>

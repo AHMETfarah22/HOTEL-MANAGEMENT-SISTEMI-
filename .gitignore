@@ -11,3 +11,13 @@ config.json
 *.pdf
 *.docx
 *.log
+
+# Hassas Bilgiler
+appsettings.json
+appsettings.Development.json
+
+# Buyuk Dosyalar
+cloudflared.exe
+*.zip
+*.sql
+api_log.txt
