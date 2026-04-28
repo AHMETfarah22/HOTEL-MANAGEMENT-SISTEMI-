@@ -11,7 +11,18 @@ namespace ORYS.WebApi.Database
             _connectionString = $"Server={server};Port={port};Database={dbName};Uid={userId};Pwd={password};SslMode=Preferred;CharSet=utf8mb4;";
         }
 
-        public MySqlConnection GetConnection() => new MySqlConnection(_connectionString);
+        public MySqlConnection GetConnection()
+        {
+            // Bulut ortamı (Render vb.) için ortam değişkenini kontrol et
+            string? cloudConnString = Environment.GetEnvironmentVariable("CONNECTION_STRING");
+            
+            if (!string.IsNullOrEmpty(cloudConnString))
+            {
+                return new MySqlConnection(cloudConnString);
+            }
+
+            return new MySqlConnection(_connectionString);
+        }
 
         /// <summary>
         /// online_reservations tablosunu oluşturur (yoksa)
