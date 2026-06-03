@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AFM Grand Hotel — Güvenli Ödeme Paneli</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/style.css"/>
+  <style>
+    body {
+      background: var(--dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    /* ── MIRROR EFFECT BACKGROUND ── */
+    .mirror-bg {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: url('https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=1600&q=80') no-repeat center center/cover;
+      filter: blur(8px) brightness(0.4);
+      z-index: -1;
+    }
+    .mirror-bg::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(8, 9, 16, 0.8), rgba(201, 168, 76, 0.1));
+    }
+
+    /* ── GLASS CONTAINER ── */
+    .payment-container {
+      width: 100%;
+      max-width: 900px;
+      background: rgba(23, 25, 36, 0.6);
+      backdrop-filter: blur(25px) saturate(180%);
+      -webkit-backdrop-filter: blur(25px) saturate(180%);
+      border: 1px solid rgba(201, 168, 76, 0.3);
+      border-radius: 40px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      box-shadow: 0 50px 100px rgba(0,0,0,0.8), inset 0 0 40px rgba(201,168,76,0.05);
+      overflow: hidden;
+      animation: slideIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+    }
+    
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(40px) scale(0.95); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* Reflections */
+    .payment-container::before {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(to right, transparent, rgba(255,255,255,0.05), transparent);
+      transform: skewX(-25deg);
+      animation: shine 6s infinite;
+      pointer-events: none;
+    }
+    @keyframes shine {
+      0% { left: -100%; }
+      20% { left: 200%; }
+      100% { left: 200%; }
+    }
+
+    /* ── LEFT PANEL (INFO) ── */
+    .pay-left {
+      padding: 50px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      border-right: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .pay-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 40px;
+    }
+    .pay-logo .logo-emblem {
+      width: 45px; height: 45px;
+      background: var(--gold);
+      color: #000;
+      border-radius: 12px;
+      font-weight: 900;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+    }
+    .pay-logo h2 {
+      font-family: var(--serif);
+      font-size: 1.5rem;
+      color: #fff;
+      letter-spacing: 1px;
+    }
+
+    .res-details {
+      margin-top: 20px;
+    }
+    .res-item {
+      margin-bottom: 25px;
+    }
+    .res-item label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 5px;
+    }
+    .res-item strong {
+      display: block;
+      font-family: var(--serif);
+      font-size: 1.3rem;
+      color: #fff;
+    }
+    .res-item .gold-val {
+      color: var(--gold);
+    }
+
+    .pay-total-box {
+      margin-top: auto;
+      background: rgba(201, 168, 76, 0.1);
+      border: 1px solid rgba(201, 168, 76, 0.2);
+      border-radius: 20px;
+      padding: 25px;
+      text-align: center;
+    }
+    .pay-total-box label {
+      color: var(--muted);
+      font-size: 0.75rem;
+      display: block;
+      margin-bottom: 5px;
+    }
+    .pay-total-box .total-price {
+      font-family: var(--serif);
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--gold);
+      line-height: 1;
+    }
+
+    /* ── RIGHT PANEL (FORM) ── */
+    .pay-right {
+      padding: 50px;
+      background: rgba(8, 9, 16, 0.3);
+    }
+    
+    .card-mirror-visual {
+      width: 100%;
+      height: 200px;
+      background: linear-gradient(135deg, rgba(201,168,76,0.8), rgba(138,104,32,0.9));
+      border-radius: 20px;
+      position: relative;
+      margin-bottom: 40px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+      padding: 30px;
+      color: var(--dark);
+      text-transform: uppercase;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+    .card-mirror-visual::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.4), transparent 60%);
+      z-index: 1;
+    }
+    .card-mirror-visual .card-chip {
+      width: 50px; height: 38px;
+      background: linear-gradient(135deg, #ddd, #777);
+      border-radius: 6px;
+      position: relative; z-index: 2;
+    }
+    .card-mirror-visual .card-number {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      z-index: 2;
+    }
+    .card-mirror-visual .card-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      z-index: 2;
+    }
+    .card-mirror-visual .card-holder {
+      font-size: 0.8rem;
+      font-weight: 700;
+      max-width: 200px;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    .form-title {
+      font-family: var(--serif);
+      font-size: 1.5rem;
+      color: #fff;
+      margin-bottom: 30px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .form-title span { color: var(--gold); }
+
+    .btn-pay-now {
+      width: 100%;
+      background: linear-gradient(135deg, var(--gold), #A8833A);
+      color: var(--dark);
+      border: none;
+      border-radius: 50px;
+      padding: 18px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 20px;
+      box-shadow: 0 10px 30px rgba(201,168,76,0.3);
+      transition: all 0.3s ease;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .btn-pay-now:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 15px 40px rgba(201,168,76,0.4);
+      background: linear-gradient(135deg, var(--gold2), var(--gold));
+    }
+    .btn-pay-now:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-back {
+      width: 100%;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--muted);
+      padding: 12px;
+      border-radius: 50px;
+      margin-top: 15px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .btn-back:hover {
+      color: #fff;
+      border-color: #fff;
+    }
+
+    /* Success Overlay */
+    .success-overlay {
+      position: absolute;
+      inset: 0;
+      background: var(--dark2);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+    }
+    .success-overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .success-icon {
+      width: 100px; height: 100px;
+      background: var(--gold);
+      color: var(--dark);
+      border-radius: 50%;
+      font-size: 3rem;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 30px;
+      box-shadow: var(--gold-glow);
+    }
+
+    /* Payment Tabs */
+    .pay-tabs { display: flex; gap: 10px; margin-bottom: 25px; }
+    .pay-tab { flex: 1; padding: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; cursor: pointer; color: var(--muted); transition: all 0.3s ease; }
+    .pay-tab.active { background: rgba(201, 168, 76, 0.15); border-color: var(--gold); color: var(--gold); font-weight: 600; }
+    
+    .pay-section { display: none; }
+    .pay-section.active { display: block; }
+    
+    .bank-info { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); padding: 15px; border-radius: 12px; margin-bottom: 20px; font-size: 0.9rem; color: #ccc; line-height: 1.5; }
+    .bank-info strong { color: #fff; }
+    
+    .file-upload-box { border: 2px dashed rgba(201, 168, 76, 0.5); padding: 25px; text-align: center; border-radius: 15px; cursor: pointer; transition: all 0.3s; margin-bottom: 20px; }
+    .file-upload-box:hover { background: rgba(201, 168, 76, 0.05); }
+    .file-upload-box input[type="file"] { display: none; }
+    .file-upload-label { color: var(--gold); font-weight: 500; cursor: pointer; }
+
+    @media (max-width: 900px) {
+      .payment-container {
+        grid-template-columns: 1fr;
+        max-height: 95vh;
+        overflow-y: auto;
+      }
+      .pay-left { padding: 30px; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.05); }
+      .pay-right { padding: 30px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="mirror-bg"></div>
+
+<div class="payment-container">
+  <!-- SUCCESS VIEW -->
+  <div class="success-overlay" id="successOverlay">
+    <div class="success-icon">✓</div>
+    <h2 class="section-title">Ödeme Başarılı!</h2>
+    <p style="color: var(--muted); margin-bottom: 30px;">Rezervasyonunuz onaylandı. Onay detayları e-posta adresinize gönderilmiştir.</p>
+    <div id="successInfo" style="margin-bottom: 40px; text-align: left; width: 100%; max-width: 400px; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 20px;">
+      <!-- Dinamik dolacak -->
+    </div>
+    <button class="btn-hero-primary" onclick="window.location.href='index.html'">Ana Sayfaya Dön</button>
+  </div>
+
+  <!-- LEFT: SUMMARY -->
+  <div class="pay-left">
+    <div class="pay-logo">
+      <div class="logo-emblem">✦</div>
+      <h2>AFM GRAND <span style="color: var(--gold)">PAY</span></h2>
+    </div>
+    
+    <div class="res-details">
+      <div class="res-item">
+        <label>Seçilen Oda</label>
+        <strong id="roomName">Yükleniyor...</strong>
+      </div>
+      <div class="res-item">
+        <label>Konaklama Tarihleri</label>
+        <strong id="resDates">-- / --</strong>
+      </div>
+      <div class="res-item">
+        <label>Misafir</label>
+        <strong id="guestName">--</strong>
+      </div>
+    </div>
+
+    <div class="pay-total-box">
+      <label>Toplam Ödenecek Tutar</label>
+      <div class="total-price" id="totalPrice">0 ₺</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: CARD FORM -->
+  <div class="pay-right">
+    <div class="form-title"><span>✦</span> Güvenli Ödeme Ekranı</div>
+
+    <div class="pay-tabs">
+      <div class="pay-tab active" onclick="switchTab('card')">Kredi Kartı</div>
+      <div class="pay-tab" onclick="switchTab('transfer')">Havale / EFT</div>
+    </div>
+
+    <!-- KART BÖLÜMÜ -->
+    <div id="sec-card" class="pay-section active">
+      <div class="card-mirror-visual">
+        <div class="card-chip"></div>
+        <div class="card-number" id="cardNumPrev">**** **** **** ****</div>
+        <div class="card-bottom">
+          <div class="card-holder" id="cardNamePrev">KART SAHİBİ</div>
+          <div class="card-expiry" id="cardExpPrev">MM/YY</div>
+        </div>
+      </div>
+
+      <div class="fg">
+        <label>Kart Sahibi Adı</label>
+        <input type="text" id="cardName" placeholder="AD SOYAD" oninput="updateUI()"/>
+      </div>
+      <div class="fg">
+        <label>Kart Numarası</label>
+        <input type="text" id="cardNum" maxlength="19" placeholder="0000 0000 0000 0000" oninput="formatCardNum(this); updateUI();"/>
+      </div>
+      <div class="form-row-2">
+        <div class="fg">
+          <label>Geçerlilik</label>
+          <input type="text" id="cardExp" maxlength="5" placeholder="AA/YY" oninput="formatExpiry(this); updateUI();"/>
+        </div>
+        <div class="fg">
+          <label>CVV</label>
+          <input type="text" id="cardCvv" maxlength="3" placeholder="***"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- HAVALE/EFT BÖLÜMÜ -->
+    <div id="sec-transfer" class="pay-section">
+      <div class="bank-info">
+        <p>Lütfen ödemeyi aşağıdaki hesaba gönderip, banka dekontunu yükleyiniz.</p>
+        <div style="margin-top: 10px;">
+          <strong>Banka:</strong> Garanti BBVA<br/>
+          <strong>Alıcı Adı:</strong> AFM Grand Hotel İşletmeciliği A.Ş.<br/>
+          <strong>IBAN:</strong> TR12 3456 7890 0000 1111 2222 33<br/>
+          <strong>Açıklama:</strong> <span style="color:var(--gold)" id="transferNote">Oda Rezervasyonu</span>
+        </div>
+      </div>
+
+      <div class="file-upload-box" onclick="document.getElementById('receiptFile').click()">
+        <input type="file" id="receiptFile" accept=".jpg,.jpeg,.png,.pdf" onchange="handleFileSelect(this)"/>
+        <div class="file-upload-label" id="fileLabel">Dekont Seç (Resim veya PDF)</div>
+        <div style="font-size: 0.8rem; color: #888; margin-top: 5px;">veya sürükleyip bırakın (Max 5MB)</div>
+      </div>
+    </div>
+
+    <button class="btn-pay-now" id="payBtn" onclick="handlePaymentFlow()">
+      <span id="btnText">Güvenli Ödemeyi Tamamla</span>
+      <span id="spinner" class="spinner hidden"></span>
+    </button>
+    <button class="btn-back" id="downloadPdfBtn" onclick="downloadPaymentPdf()" style="border-color: var(--gold); color: var(--gold); margin-top: 10px; display:none;">📄 Dekontu İndir</button>
+    <button class="btn-back" onclick="history.back()">Vazgeç ve Geri Dön</button>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script>
+  // Verileri SessionStorage'dan Al
+  const resData = JSON.parse(sessionStorage.getItem('pendingReservation'));
+  const roomData = JSON.parse(sessionStorage.getItem('pendingRoom'));
+
+  if (!resData || !roomData) {
+    alert("Rezervasyon verisi bulunamadı!");
+    window.location.href = 'index.html';
+  }
+
+  // UI Doldur
+  document.getElementById('roomName').textContent = roomData.roomTypeName + " (Oda " + roomData.roomNumber + ")";
+  document.getElementById('resDates').textContent = formatDate(resData.checkInDate) + " - " + formatDate(resData.checkOutDate);
+  document.getElementById('guestName').textContent = resData.fullName;
+
+  const nights = Math.round((new Date(resData.checkOutDate) - new Date(resData.checkInDate)) / 86400000);
+  const total = roomData.pricePerNight * nights;
+  document.getElementById('totalPrice').textContent = new Intl.NumberFormat('tr-TR').format(total) + " ₺";
+
+  function formatDate(d) {
+    return new Date(d).toLocaleDateString('tr-TR');
+  }
+
+  function updateUI() {
+    document.getElementById('cardNumPrev').textContent = document.getElementById('cardNum').value || '**** **** **** ****';
+    document.getElementById('cardNamePrev').textContent = document.getElementById('cardName').value.toUpperCase() || 'KART SAHİBİ';
+    document.getElementById('cardExpPrev').textContent = document.getElementById('cardExp').value || 'MM/YY';
+  }
+
+  function formatCardNum(el) {
+    let v = el.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    let parts = [];
+    for (let i=0, len=v.length; i<len; i+=4) parts.push(v.substring(i, i+4));
+    el.value = parts.join(' ');
+  }
+
+  function formatExpiry(el) {
+    let v = el.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    if (v.length >= 2) el.value = v.substring(0,2) + '/' + v.substring(2,4);
+    else el.value = v;
+  }
+
+  let paymentState = 1; // 1: Pay/Generate PDF, 2: Submit Reservation
+  let generatedPdfUrl = "";
+  let uploadedReceiptUrl = "";
+  let currentMethod = 'card'; // 'card' or 'transfer'
+
+  function switchTab(method) {
+    currentMethod = method;
+    document.querySelectorAll('.pay-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.pay-section').forEach(s => s.classList.remove('active'));
+    
+    if (method === 'card') {
+      document.querySelectorAll('.pay-tab')[0].classList.add('active');
+      document.getElementById('sec-card').classList.add('active');
+      document.getElementById('btnText').textContent = paymentState === 1 ? "Güvenli Ödemeyi Tamamla" : "Rezervasyonu Gönder";
+    } else {
+      document.querySelectorAll('.pay-tab')[1].classList.add('active');
+      document.getElementById('sec-transfer').classList.add('active');
+      document.getElementById('btnText').textContent = "Dekontu Yükle ve Rezervasyonu Gönder";
+      paymentState = 1; // reset flow for transfer
+      document.getElementById('downloadPdfBtn').style.display = "none";
+    }
+  }
+
+  function handleFileSelect(input) {
+    if (input.files && input.files[0]) {
+      document.getElementById('fileLabel').textContent = input.files[0].name;
+    }
+  }
+
+  async function handlePaymentFlow() {
+    if (currentMethod === 'card') {
+      if (paymentState === 1) {
+        await processPaymentAndDownload();
+      } else {
+        await submitFinalReservation();
+      }
+    } else {
+      await processTransferAndSubmit();
+    }
+  }
+
+  async function processTransferAndSubmit() {
+    const fileInput = document.getElementById('receiptFile');
+    if (!fileInput.files || fileInput.files.length === 0) {
+      showToast("Lütfen banka dekontunuzu yükleyiniz.", "error");
+      return;
+    }
+
+    const btn = document.getElementById('payBtn');
+    const btnText = document.getElementById('btnText');
+    const spinner = document.getElementById('spinner');
+
+    btn.disabled = true;
+    btnText.textContent = "Dekont Yükleniyor...";
+    spinner.classList.remove('hidden');
+
+    try {
+      // 1) Dekont Yükle
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+
+      const uploadRes = await fetch('/api/reservations/online/upload-receipt', {
+        method: 'POST',
+        body: formData
+      });
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok) throw new Error(uploadData.error || "Dekont yüklenemedi.");
+
+      uploadedReceiptUrl = uploadData.receiptUrl;
+
+      // 2) Rezervasyonu Gönder
+      btnText.textContent = "Rezervasyon İletiliyor...";
+      
+      const payload = {
+        ...resData,
+        isPaid: false, // Onay bekleyecek
+        receiptPath: uploadedReceiptUrl,
+        paymentMethod: 'Havale/EFT'
+      };
+
+      const res = await fetch('/api/reservations/online', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Sunucu hatası.");
+
+      // Başarı
+      document.getElementById('successInfo').innerHTML = `
+        <p><strong>Rezervasyon Kodu:</strong> <span style="color:var(--gold)">${result.resCode || 'AFM-' + Date.now()}</span></p>
+        <p><strong>Misafir:</strong> ${resData.fullName}</p>
+        <p><strong>Tutar:</strong> ${document.getElementById('totalPrice').textContent}</p>
+        <p><strong>Durum:</strong> Ödeme Onayı Bekliyor</p>
+        <p><strong>İşlem Tarihi:</strong> ${new Date().toLocaleString('tr-TR')}</p>
+      `;
+      document.getElementById('successOverlay').classList.add('active');
+      
+      sessionStorage.removeItem('pendingReservation');
+      sessionStorage.removeItem('pendingRoom');
+
+    } catch (e) {
+      showToast(e.message, "error");
+      btn.disabled = false;
+      btnText.textContent = "Dekontu Yükle ve Rezervasyonu Gönder";
+    } finally {
+      spinner.classList.add('hidden');
+    }
+  }
+
+  async function downloadPaymentPdf(url) {
+    if (!url) return;
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = "AFM_Grand_Hotel_Dekont.pdf";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  async function processPaymentAndDownload() {
+    const cardName = document.getElementById('cardName').value.trim();
+    const cardNum = document.getElementById('cardNum').value.trim();
+    const cardExp = document.getElementById('cardExp').value.trim();
+    const cardCvv = document.getElementById('cardCvv').value.trim();
+
+    if (!cardName || cardNum.length < 15 || cardExp.length < 5 || cardCvv.length < 3) {
+      showToast("Lütfen tüm kart bilgilerini eksiksiz giriniz.", "error");
+      return;
+    }
+
+    const btn = document.getElementById('payBtn');
+    const btnText = document.getElementById('btnText');
+    const spinner = document.getElementById('spinner');
+
+    btn.disabled = true;
+    btnText.textContent = "Dekont Hazırlanıyor...";
+    spinner.classList.remove('hidden');
+
+    try {
+      // 1) PDF Dekontu Oluştur
+      const pdfRes = await fetch('/api/reservations/online/preview-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(resData)
+      });
+      const pdfData = await pdfRes.json();
+      if (!pdfRes.ok) throw new Error(pdfData.error || "PDF Dekontu oluşturulamadı.");
+
+      generatedPdfUrl = pdfData.pdfUrl;
+      
+      // 2) Otomatik İndir
+      await downloadPaymentPdf(generatedPdfUrl);
+      
+      // 3) Durumu Güncelle
+      paymentState = 2;
+      btnText.textContent = "Rezervasyonu Gönder";
+      document.getElementById('downloadPdfBtn').style.display = "block";
+      showToast("Dekont indirildi. Şimdi rezervasyonu gönderin.", "success");
+
+    } catch (e) {
+      showToast(e.message, "error");
+    } finally {
+      btn.disabled = false;
+      spinner.classList.add('hidden');
+    }
+  }
+
+  async function submitFinalReservation() {
+    const btn = document.getElementById('payBtn');
+    const btnText = document.getElementById('btnText');
+    const spinner = document.getElementById('spinner');
+
+    btn.disabled = true;
+    btnText.textContent = "Gönderiliyor...";
+    spinner.classList.remove('hidden');
+
+    try {
+      const cardName = document.getElementById('cardName').value.trim();
+      const cardNum = document.getElementById('cardNum').value.trim();
+
+      const payload = {
+        ...resData,
+        isPaid: true,
+        pdfPath: generatedPdfUrl,
+        paymentMethod: 'Kredi Karti',
+        cardHolderName: cardName,
+        cardNumber: cardNum
+      };
+
+      const res = await fetch('/api/reservations/online', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Sunucu hatası.");
+
+      // Başarı
+      document.getElementById('successInfo').innerHTML = `
+        <p><strong>Rezervasyon Kodu:</strong> <span style="color:var(--gold)">${result.resCode || 'AFM-' + Date.now()}</span></p>
+        <p><strong>Misafir:</strong> ${resData.fullName}</p>
+        <p><strong>Tutar:</strong> ${document.getElementById('totalPrice').textContent}</p>
+        <p><strong>İşlem Tarihi:</strong> ${new Date().toLocaleString('tr-TR')}</p>
+        <p><a href="${generatedPdfUrl}" target="_blank" style="color:var(--gold); text-decoration:underline;">📄 Dekontu Tekrar İndir</a></p>
+      `;
+      document.getElementById('successOverlay').classList.add('active');
+      
+      sessionStorage.removeItem('pendingReservation');
+      sessionStorage.removeItem('pendingRoom');
+
+    } catch (e) {
+      showToast(e.message, "error");
+      btn.disabled = false;
+      btnText.textContent = "Rezervasyonu Gönder";
+    } finally {
+      spinner.classList.add('hidden');
+    }
+  }
+
+  async function downloadPaymentPdf_Old() { // Keep original name for compatibility if needed
+    downloadPaymentPdf(generatedPdfUrl);
+  }
+
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast ${type}`;
+    t.classList.remove('hidden');
+    setTimeout(() => t.classList.add('hidden'), 4000);
+  }
+</script>
+
+</body>
+</html>

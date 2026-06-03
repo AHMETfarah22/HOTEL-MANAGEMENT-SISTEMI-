@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AFM Grand Hotel — Hızlı Çıkış Ödemesi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/style.css"/>
+  <style>
+    body { background: var(--dark); display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; overflow: hidden; }
+    .mirror-bg { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: url('https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=1600&q=80') no-repeat center center/cover; filter: blur(8px) brightness(0.4); z-index: -1; }
+    .mirror-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(8, 9, 16, 0.8), rgba(201, 168, 76, 0.1)); }
+    .payment-container { width: 100%; max-width: 900px; background: rgba(23, 25, 36, 0.6); backdrop-filter: blur(25px) saturate(180%); border: 1px solid rgba(201, 168, 76, 0.3); border-radius: 40px; display: grid; grid-template-columns: 1fr 1fr; box-shadow: 0 50px 100px rgba(0,0,0,0.8); overflow: hidden; position: relative; }
+    .pay-left { padding: 50px; display: flex; flex-direction: column; justify-content: center; border-right: 1px solid rgba(255, 255, 255, 0.05); }
+    .pay-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 40px; }
+    .logo-emblem { width: 45px; height: 45px; background: var(--gold); color: #000; border-radius: 12px; font-weight: 900; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; }
+    .res-item { margin-bottom: 25px; }
+    .res-item label { display: block; color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; }
+    .res-item strong { display: block; font-family: var(--serif); font-size: 1.3rem; color: #fff; }
+    .pay-total-box { margin-top: auto; background: rgba(201, 168, 76, 0.1); border: 1px solid rgba(201, 168, 76, 0.2); border-radius: 20px; padding: 25px; text-align: center; }
+    .total-price { font-family: var(--serif); font-size: 2.5rem; font-weight: 700; color: var(--gold); }
+    .pay-right { padding: 50px; background: rgba(8, 9, 16, 0.3); }
+    .form-title { font-family: var(--serif); font-size: 1.5rem; color: #fff; margin-bottom: 30px; }
+    .btn-pay-now { width: 100%; background: var(--gold); color: var(--dark); border: none; border-radius: 50px; padding: 18px; font-size: 1.1rem; font-weight: 700; cursor: pointer; margin-top: 20px; }
+    .success-overlay { position: absolute; inset: 0; background: var(--dark2); z-index: 100; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px; }
+    .success-overlay.active { display: flex; }
+    .success-icon { width: 80px; height: 80px; background: var(--gold); color: var(--dark); border-radius: 50%; font-size: 2.5rem; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
+    @media (max-width: 900px) { .payment-container { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<div class="mirror-bg"></div>
+
+<div class="payment-container" id="mainContainer">
+  <div class="success-overlay" id="successOverlay">
+    <div class="success-icon">✓</div>
+    <h2 class="section-title">Ödeme Başarılı!</h2>
+    <p style="color: var(--muted); margin-bottom: 30px;">Kalan borcunuz başarıyla tahsil edilmiştir. Çıkış işleminiz tamamlanmıştır.</p>
+    <button class="btn-hero-primary" onclick="window.close()">Pencereyi Kapat</button>
+  </div>
+
+  <div class="pay-left">
+    <div class="pay-logo"><div class="logo-emblem">✦</div><h2>AFM GRAND <span style="color: var(--gold)">CHECKOUT</span></h2></div>
+    <div class="res-details">
+      <div class="res-item"><label>Misafir</label><strong id="guestName">Yükleniyor...</strong></div>
+      <div class="res-item"><label>Oda Ücreti</label><strong id="roomPrice">0 ₺</strong></div>
+      <div class="res-item"><label>Ekstra Harcamalar</label><strong id="extras">0 ₺</strong></div>
+      <div class="res-item"><label>Daha Önce Ödenen</label><strong id="paid">0 ₺</strong></div>
+    </div>
+    <div class="pay-total-box"><label>Ödenecek Kalan Tutar</label><div class="total-price" id="balance">0 ₺</div></div>
+  </div>
+
+  <div class="pay-right">
+    <div class="form-title">Güvenli Çıkış Ödemesi</div>
+    <div class="fg"><label>Kart Sahibi Adı</label><input type="text" id="cardName" placeholder="AD SOYAD"/></div>
+    <div class="fg"><label>Kart Numarası</label><input type="text" id="cardNum" placeholder="0000 0000 0000 0000"/></div>
+    <div class="form-row-2">
+      <div class="fg"><label>Geçerlilik</label><input type="text" id="cardExp" placeholder="AA/YY"/></div>
+      <div class="fg"><label>CVV</label><input type="text" id="cardCvv" placeholder="***"/></div>
+    </div>
+    <button class="btn-pay-now" id="payBtn" onclick="processCheckoutPayment()">Ödemeyi Tamamla ve Çıkış Yap</button>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const resId = urlParams.get('resId');
+  let balanceAmount = 0;
+
+  if (!resId) { alert("Geçersiz işlem!"); window.location.href = 'index.html'; }
+
+  async function loadBalance() {
+    try {
+      const res = await fetch(`/api/payments/balance/${resId}`);
+      if (!res.ok) throw new Error("Veri çekilemedi");
+      const data = await res.json();
+      
+      document.getElementById('guestName').textContent = data.guestName;
+      document.getElementById('roomPrice').textContent = fmt(data.totalRoomPrice) + " ₺";
+      document.getElementById('extras').textContent = fmt(data.extras) + " ₺";
+      document.getElementById('paid').textContent = fmt(data.totalPaid) + " ₺";
+      document.getElementById('balance').textContent = fmt(data.balance) + " ₺";
+      balanceAmount = data.balance;
+
+      if (balanceAmount <= 0) {
+        document.getElementById('payBtn').disabled = true;
+        document.getElementById('payBtn').textContent = "Borç Bulunmuyor";
+      }
+    } catch (e) { showToast(e.message, "error"); }
+  }
+
+  function fmt(n) { return new Intl.NumberFormat('tr-TR').format(n); }
+
+  async function processCheckoutPayment() {
+    const cardName = document.getElementById('cardName').value.trim();
+    const cardNum = document.getElementById('cardNum').value.trim();
+
+    if (!cardName || cardNum.length < 15) { showToast("Lütfen kart bilgilerini girin", "error"); return; }
+
+    const btn = document.getElementById('payBtn');
+    btn.disabled = true; btn.textContent = "İşlem Yapılıyor...";
+
+    try {
+      const res = await fetch('/api/payments/checkout-pay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reservationId: parseInt(resId),
+          amount: balanceAmount,
+          cardHolderName: cardName,
+          cardNumber: cardNum
+        })
+      });
+      if (!res.ok) throw new Error("Ödeme alınamadı");
+      document.getElementById('successOverlay').classList.add('active');
+    } catch (e) { showToast(e.message, "error"); btn.disabled = false; btn.textContent = "Tekrar Dene"; }
+  }
+
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = `toast ${type}`;
+    t.classList.remove('hidden');
+    setTimeout(() => t.classList.add('hidden'), 4000);
+  }
+
+  loadBalance();
+</script>
+</body>
+</html>

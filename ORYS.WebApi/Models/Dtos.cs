@@ -33,6 +33,14 @@ namespace ORYS.WebApi.Models
         public int Adults { get; set; } = 1;
         public int Children { get; set; } = 0;
         public string? Notes { get; set; }
+        
+        // Ödeme Bilgileri
+        public bool IsPaid { get; set; } = false;
+        public string? PdfPath { get; set; }
+        public string? ReceiptPath { get; set; }
+        public string? PaymentMethod { get; set; }
+        public string? CardHolderName { get; set; }
+        public string? CardNumber { get; set; } // Sadece son 4 hanesi gibi tutulabilir veya simülasyon
     }
 
     /// <summary>
@@ -59,7 +67,13 @@ namespace ORYS.WebApi.Models
         public string Status { get; set; } = "Bekliyor";
         public int? InternalResId { get; set; }
         public string? RejectReason { get; set; }
+        public string? RejectMessage { get; set; }
+        public bool IsPaid { get; set; }
+        public string? PdfPath { get; set; }
+        public string? ReceiptPath { get; set; }
         public DateTime CreatedAt { get; set; }
+        public string? PaymentMethod { get; set; }
+        public string? PaymentNotes { get; set; }
         public int NightCount => (CheckOutDate - CheckInDate).Days;
     }
 
@@ -69,5 +83,38 @@ namespace ORYS.WebApi.Models
     public class ApproveRejectRequest
     {
         public string? Reason { get; set; }
+        public string? Message { get; set; }
+    }
+
+    public class CheckoutPaymentRequest
+    {
+        public int ReservationId { get; set; }
+        public decimal Amount { get; set; }
+        public string CardHolderName { get; set; } = "";
+        public string CardNumber { get; set; } = ""; // Simulation
+    }
+
+    /// <summary>
+    /// Ödeme bilgisi (admin paneline gönderilir)
+    /// </summary>
+    public class PaymentDto
+    {
+        public int Id { get; set; }
+        public int ReservationId { get; set; }
+        public string GuestName { get; set; } = "";
+        public string RoomNumber { get; set; } = "";
+        public decimal Amount { get; set; }
+        public string PaymentMethod { get; set; } = "";
+        public DateTime PaymentDate { get; set; }
+        public string? Notes { get; set; }
+
+        public string PaymentMethodDisplay => PaymentMethod switch
+        {
+            "Nakit" => "💵 Nakit",
+            "Kredi Karti" => "💳 Kredi Kartı",
+            "Havale" => "🏦 Havale",
+            "Diger" => "📋 Diğer",
+            _ => PaymentMethod
+        };
     }
 }

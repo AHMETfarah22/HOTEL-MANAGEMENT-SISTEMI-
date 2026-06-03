@@ -7,9 +7,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="..\config.json">
+      <Link>config.json</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="MailKit" Version="4.16.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.25" />
     <PackageReference Include="MySql.Data" Version="9.2.0" />
+    <PackageReference Include="QuestPDF" Version="2026.5.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 

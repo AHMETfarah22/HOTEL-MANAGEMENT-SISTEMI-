@@ -10,6 +10,7 @@ namespace ORYS.Models
         public int Capacity { get; set; }
         public decimal PricePerNight { get; set; }
         public string Status { get; set; } = "Available";
+        public string CleaningStatus { get; set; } = "Clean";
         public string? Description { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }

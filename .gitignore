@@ -12,7 +12,8 @@ config.json
 *.docx
 *.log
 
-# Hassas Bilgiler
+# Hassas Bilgiler (Şifreler ve Gizli Anahtarlar)
+.env
 appsettings.json
 appsettings.Development.json
 

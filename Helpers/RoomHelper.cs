@@ -15,7 +15,7 @@ namespace ORYS.Helpers
             {
                 conn.Open();
                 string query = @"SELECT r.id, r.room_number, r.room_type_id, r.floor, r.capacity, 
-                                 r.price_per_night, r.status, r.description,
+                                 r.price_per_night, r.status, r.cleaning_status, r.description,
                                  rt.name AS room_type_name 
                                  FROM rooms r 
                                  LEFT JOIN room_types rt ON r.room_type_id = rt.id 
@@ -35,6 +35,7 @@ namespace ORYS.Helpers
                             Capacity = reader.GetInt32("capacity"),
                             PricePerNight = reader.GetDecimal("price_per_night"),
                             Status = reader.GetString("status"),
+                            CleaningStatus = reader.GetString("cleaning_status"),
                             Description = reader.IsDBNull(reader.GetOrdinal("description")) ? null : reader.GetString("description"),
                         });
                     }
@@ -58,13 +59,28 @@ namespace ORYS.Helpers
             }
         }
 
+        public static void UpdateCleaningStatus(int roomId, string cleaningStatus)
+        {
+            using (var conn = DatabaseHelper.GetConnection())
+            {
+                conn.Open();
+                string query = "UPDATE rooms SET cleaning_status = @cs WHERE id = @id";
+                using (var cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@cs", cleaningStatus);
+                    cmd.Parameters.AddWithValue("@id", roomId);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
         public static void AddRoom(Room room)
         {
             using (var conn = DatabaseHelper.GetConnection())
             {
                 conn.Open();
-                string query = @"INSERT INTO rooms (room_number, room_type_id, floor, capacity, price_per_night, status, description) 
-                                 VALUES (@room_number, @room_type_id, @floor, @capacity, @price, @status, @desc)";
+                string query = @"INSERT INTO rooms (room_number, room_type_id, floor, capacity, price_per_night, status, cleaning_status, description) 
+                                 VALUES (@room_number, @room_type_id, @floor, @capacity, @price, @status, @cleaning_status, @desc)";
                 using (var cmd = new MySqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@room_number", room.RoomNumber);
@@ -73,6 +89,7 @@ namespace ORYS.Helpers
                     cmd.Parameters.AddWithValue("@capacity", room.Capacity);
                     cmd.Parameters.AddWithValue("@price", room.PricePerNight);
                     cmd.Parameters.AddWithValue("@status", room.Status);
+                    cmd.Parameters.AddWithValue("@cleaning_status", room.CleaningStatus);
                     cmd.Parameters.AddWithValue("@desc", (object?)room.Description ?? DBNull.Value);
                     cmd.ExecuteNonQuery();
                 }
@@ -85,7 +102,7 @@ namespace ORYS.Helpers
             {
                 conn.Open();
                 string query = @"UPDATE rooms SET room_number=@rn, room_type_id=@rt, floor=@f, 
-                                 capacity=@c, price_per_night=@p, status=@s, description=@d WHERE id=@id";
+                                 capacity=@c, price_per_night=@p, status=@s, cleaning_status=@cs, description=@d WHERE id=@id";
                 using (var cmd = new MySqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@rn", room.RoomNumber);
@@ -94,6 +111,7 @@ namespace ORYS.Helpers
                     cmd.Parameters.AddWithValue("@c", room.Capacity);
                     cmd.Parameters.AddWithValue("@p", room.PricePerNight);
                     cmd.Parameters.AddWithValue("@s", room.Status);
+                    cmd.Parameters.AddWithValue("@cs", room.CleaningStatus);
                     cmd.Parameters.AddWithValue("@d", (object?)room.Description ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@id", room.Id);
                     cmd.ExecuteNonQuery();
@@ -157,7 +175,7 @@ namespace ORYS.Helpers
             {
                 conn.Open();
                 string query = @"SELECT r.id, r.room_number, r.room_type_id, r.floor, r.capacity, 
-                                 r.price_per_night, r.status, r.description, 
+                                 r.price_per_night, r.status, r.cleaning_status, r.description, 
                                  rt.name AS room_type_name 
                                  FROM rooms r
                                  LEFT JOIN room_types rt ON r.room_type_id = rt.id
@@ -187,12 +205,44 @@ namespace ORYS.Helpers
                                 Capacity = reader.GetInt32("capacity"),
                                 PricePerNight = reader.GetDecimal("price_per_night"),
                                 Status = reader.GetString("status"),
+                                CleaningStatus = reader.GetString("cleaning_status"),
                             });
                         }
                     }
                 }
             }
             return rooms;
+        }
+        /// <summary>
+        /// Oda durumlarını (Müsait, Dolu, Rezerve) aktif rezervasyonlarla karşılaştırır ve tutarsızlıkları düzeltir.
+        /// </summary>
+        public static void SyncRoomStatuses()
+        {
+            using (var conn = DatabaseHelper.GetConnection())
+            {
+                conn.Open();
+                
+                // 1. Tüm odaları başlangıçta 'Available' (Müsait) kabul et (Bakımda olanlar hariç)
+                string resetQuery = "UPDATE rooms SET status = 'Available' WHERE status != 'Maintenance'";
+                using (var cmd = new MySqlCommand(resetQuery, conn)) cmd.ExecuteNonQuery();
+
+                // 2. Şu an içeride olan (GirisYapildi) misafirlerin odalarını 'Occupied' (Dolu) yap
+                string occupiedQuery = @"UPDATE rooms r 
+                                         INNER JOIN reservations rv ON r.id = rv.room_id 
+                                         SET r.status = 'Occupied' 
+                                         WHERE rv.status = 'GirisYapildi'";
+                using (var cmd = new MySqlCommand(occupiedQuery, conn)) cmd.ExecuteNonQuery();
+
+                // 3. Gelecek (Onaylandi/Bekliyor) rezervasyonu olan odaları 'Reserved' (Rezerve) yap (Eğer Dolu değilse)
+                // Sadece bugün veya gelecek tarihliler
+                string reservedQuery = @"UPDATE rooms r 
+                                         INNER JOIN reservations rv ON r.id = rv.room_id 
+                                         SET r.status = 'Reserved' 
+                                         WHERE rv.status IN ('Onaylandi', 'Bekliyor') 
+                                         AND r.status = 'Available'
+                                         AND rv.check_in_date <= CURDATE() AND rv.check_out_date >= CURDATE()";
+                using (var cmd = new MySqlCommand(reservedQuery, conn)) cmd.ExecuteNonQuery();
+            }
         }
     }
 }

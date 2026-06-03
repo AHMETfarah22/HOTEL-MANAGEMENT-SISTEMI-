@@ -208,21 +208,32 @@ function renderRooms(rooms) {
   getEl('no-rooms').classList.add('hidden');
 
   rooms.forEach((r, i) => {
-    const isAvail = !isSearchMode || r.status !== 'Reserved';
+    // Oda müsaitlik kontrolü: Search modunda ise zaten müsaitler gelir, değilse status'e bak
+    const isOccupied = r.status === 'Occupied';
+    const isAvail = !isOccupied && r.status !== 'Maintenance';
+    
     const imgUrl = getRoomImage(r.roomTypeName);
     
     const statusTag = isSearchMode 
       ? `<div class="room-status-tag ${isAvail ? 'avail' : 'busy'}">${isAvail ? '✓ Müsait' : '✗ Dolu'}</div>` 
-      : '';
+      : (isOccupied ? `<div class="room-status-tag busy">✗ Dolu (İçeride Müşteri Var)</div>` : '');
 
     const priceHtml = isSearchMode && nights > 0
       ? `<div class="room-price-total">Toplam: ${fmt(r.pricePerNight * nights)} ₺</div>`
       : '';
 
     const card = document.createElement('div');
-    card.className = 'room-card fade-in-up';
+    card.className = `room-card fade-in-up ${isOccupied ? 'occupied' : ''}`;
     card.style.animationDelay = `${i * 0.05}s`;
-    card.onclick = () => isAvail || !isSearchMode ? openFModal(r.id) : null;
+    
+    // Oda doluysa uyarı ver, değilse modalı aç
+    card.onclick = () => {
+      if (isOccupied) {
+        showToast('Bu oda şu an dolu, içeride müşteri var!', 'error');
+        return;
+      }
+      openFModal(r.id);
+    };
     
     card.innerHTML = `
       <div class="room-img-zone">
@@ -247,8 +258,8 @@ function renderRooms(rooms) {
           <div class="room-price-lbl">₺ / gece</div>
           ${priceHtml}
         </div>
-        <button class="btn-sec-card" ${!isAvail && isSearchMode ? 'disabled' : ''} onclick="event.stopPropagation(); ${isAvail || !isSearchMode ? `openFModal(${r.id})` : ''}">
-          ${isAvail || !isSearchMode ? 'Seç & Rezervasyon →' : 'Dolu'}
+        <button class="btn-sec-card" ${isOccupied ? 'style="background:var(--red); border-color:var(--red)"' : ''} onclick="event.stopPropagation(); if('${r.status}' === 'Occupied') { showToast('Bu oda şu an dolu, içeride müşteri var!', 'error'); } else { openFModal(${r.id}); }">
+          ${isOccupied ? 'Dolu (Müşteri Var)' : 'Seç & Rezervasyon →'}
         </button>
       </div>
     `;
@@ -330,33 +341,88 @@ function updateModalPrice() {
     const n = Math.round((d2 - d1) / 86400000);
     const total = selectedRoom.pricePerNight * n;
     
-    getEl('priceSummary').innerHTML = `
+    const html = `
       <div class="ps-row"><span>Konaklama (${n} Gece)</span><span>${fmt(total)} ₺</span></div>
       <div class="ps-row"><span>KDV & Konaklama Vergisi</span><span>Dahil</span></div>
       <div class="ps-row ps-total"><span>Garantili Toplam</span><span>${fmt(total)} ₺</span></div>
     `;
+    getEl('priceSummary').innerHTML = html;
+    if (getEl('priceSummary2')) getEl('priceSummary2').innerHTML = html;
     
     const minCo = new Date(d1); minCo.setDate(d1.getDate() + 1);
     getEl('rCheckOut').min = minCo.toISOString().split('T')[0];
   } else {
-    getEl('priceSummary').innerHTML = `<div class="ps-row" style="color:var(--red)">Hatalı tarih seçimi</div>`;
+    const err = `<div class="ps-row" style="color:var(--red)">Hatalı tarih seçimi</div>`;
+    getEl('priceSummary').innerHTML = err;
+    if (getEl('priceSummary2')) getEl('priceSummary2').innerHTML = err;
   }
 }
 
-async function submitReservation() {
-  if (!selectedRoom) return;
+async function downloadPreviewPdf() {
+  if (!selectedRoom) return showToast('Lütfen önce bir oda seçin', 'error');
+  
+  const fullName = getEl('rName').value.trim();
+  const email = getEl('rEmail').value.trim();
+  const checkInDate = getEl('rCheckIn').value;
+  const checkOutDate = getEl('rCheckOut').value;
 
-  const ci = getEl('rCheckIn').value;
-  const co = getEl('rCheckOut').value;
-  const d1 = new Date(ci), d2 = new Date(co);
-  if (d2 <= d1) return showToast('Çıkış tarihi girişten sonra olmalıdır', 'error');
+  if (!fullName) return showToast('PDF için Ad Soyad gereklidir', 'error');
+  if (!email || !email.includes('@')) return showToast('PDF için Geçerli e-posta gereklidir', 'error');
+  
+  showToast('Önizleme PDF hazırlanıyor...', 'info');
 
   const payload = {
     roomId: selectedRoom.id,
-    checkInDate: ci,
-    checkOutDate: co,
-    fullName: getEl('rName').value.trim(),
-    email: getEl('rEmail').value.trim(),
+    checkInDate: checkInDate,
+    checkOutDate: checkOutDate,
+    fullName: fullName,
+    email: email,
+    phone: getEl('rPhone').value.trim() || null,
+    tcNo: getEl('rTc').value.trim() || null,
+    adults: parseInt(getEl('rAdults').value),
+    children: parseInt(getEl('rChildren').value),
+    notes: getEl('rNotes').value.trim() || null
+  };
+
+  try {
+    const res = await fetch(`${API}/api/reservations/online/preview-pdf`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Hata');
+
+    // PDF'i yeni sekmede aç / indir
+    window.open(API + data.pdfUrl, '_blank');
+    showToast('PDF Başarıyla oluşturuldu', 'success');
+  } catch (e) {
+    showToast('PDF oluşturulamadı: ' + e.message, 'error');
+  }
+}
+
+function redirectToPayment() {
+  if (!selectedRoom) return;
+
+  // Validasyon
+  const fullName = getEl('rName').value.trim();
+  const email = getEl('rEmail').value.trim();
+  const checkInDate = getEl('rCheckIn').value;
+  const checkOutDate = getEl('rCheckOut').value;
+
+  if (!fullName) return showToast('Lütfen ad soyad giriniz', 'error');
+  if (!email || !email.includes('@')) return showToast('Geçerli e-posta giriniz', 'error');
+  
+  const d1 = new Date(checkInDate), d2 = new Date(checkOutDate);
+  if (d2 <= d1) return showToast('Çıkış tarihi girişten sonra olmalıdır', 'error');
+
+  // Rezervasyon verilerini hazırla
+  const pendingReservation = {
+    roomId: selectedRoom.id,
+    checkInDate: checkInDate,
+    checkOutDate: checkOutDate,
+    fullName: fullName,
+    email: email,
     phone: getEl('rPhone').value.trim() || null,
     tcNo: getEl('rTc').value.trim() || null,
     nationality: getEl('rNat').value,
@@ -365,13 +431,50 @@ async function submitReservation() {
     notes: getEl('rNotes').value.trim() || null
   };
 
-  if (!payload.fullName) return showToast('Ad Soyad zorunludur', 'error');
-  if (!payload.email || !payload.email.includes('@')) return showToast('Geçerli e-posta giriniz', 'error');
+  // SessionStorage'a kaydet (Ödeme sayfasında kullanmak için)
+  sessionStorage.setItem('pendingReservation', JSON.stringify(pendingReservation));
+  sessionStorage.setItem('pendingRoom', JSON.stringify(selectedRoom));
 
-  const btn = getEl('submitBtn');
-  getEl('submitText').textContent = 'İşleniyor...';
-  getEl('submitSpinner').classList.remove('hidden');
+  // Ödeme sayfasına yönlendir
+  window.location.href = 'payment.html';
+}
+
+async function submitWithoutPayment(e) {
+  if (!selectedRoom) return;
+  if (e) e.preventDefault();
+
+  // Validasyon
+  const fullName = getEl('rName').value.trim();
+  const email = getEl('rEmail').value.trim();
+  const checkInDate = getEl('rCheckIn').value;
+  const checkOutDate = getEl('rCheckOut').value;
+
+  if (!fullName) return showToast('Lütfen ad soyad giriniz', 'error');
+  if (!email || !email.includes('@')) return showToast('Geçerli e-posta giriniz', 'error');
+  
+  const d1 = new Date(checkInDate), d2 = new Date(checkOutDate);
+  if (d2 <= d1) return showToast('Çıkış tarihi girişten sonra olmalıdır', 'error');
+
+  const payload = {
+    roomId: selectedRoom.id,
+    checkInDate: checkInDate,
+    checkOutDate: checkOutDate,
+    fullName: fullName,
+    email: email,
+    phone: getEl('rPhone').value.trim() || null,
+    tcNo: getEl('rTc').value.trim() || null,
+    nationality: getEl('rNat').value,
+    adults: parseInt(getEl('rAdults').value),
+    children: parseInt(getEl('rChildren').value),
+    notes: getEl('rNotes').value.trim() || null,
+    isPaid: false,
+    paymentMethod: 'Otelde Odeme'
+  };
+
+  const btn = event.currentTarget;
+  const originalHtml = btn.innerHTML;
   btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div>';
 
   try {
     const res = await fetch(`${API}/api/reservations/online`, {
@@ -383,14 +486,13 @@ async function submitReservation() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Hata');
 
-    // Show Success
-    const n = Math.round((d2 - d1) / 86400000);
-    getEl('successMsg').textContent = data.message;
+    // Başarı Ekranını Göster
+    getEl('successMsg').textContent = 'Rezervasyonunuz Başarıyla Alındı!';
     getEl('successDetail').innerHTML = `
       <p><strong>Misafir:</strong> ${payload.fullName}</p>
       <p><strong>Oda:</strong> ${selectedRoom.roomTypeName} (Oda ${selectedRoom.roomNumber})</p>
-      <p><strong>Tarih:</strong> ${new Date(ci).toLocaleDateString('tr-TR')} - ${new Date(co).toLocaleDateString('tr-TR')}</p>
-      <p><strong>Toplam:</strong> ${fmt(selectedRoom.pricePerNight * n)} ₺</p>
+      <p><strong>Tarih:</strong> ${new Date(checkInDate).toLocaleDateString('tr-TR')} - ${new Date(checkOutDate).toLocaleDateString('tr-TR')}</p>
+      <p style="color:var(--gold); font-weight:700; margin-top:10px">🏨 Ödeme Varışta Otelde Yapılacaktır.</p>
     `;
 
     getEl('fmodalFormWrap').classList.add('hidden');
@@ -399,9 +501,8 @@ async function submitReservation() {
   } catch (e) {
     showToast(e.message || 'Rezervasyon yapılamadı', 'error');
   } finally {
-    getEl('submitText').textContent = '✦ Rezervasyonu Tamamla';
-    getEl('submitSpinner').classList.add('hidden');
     btn.disabled = false;
+    btn.innerHTML = originalHtml;
   }
 }
 
@@ -525,6 +626,109 @@ function translateStatus(s) {
   if (s === 'Onaylandi' || s === 'GirisYapildi') return '✅ Onaylandı';
   if (s === 'Reddedildi') return '❌ Reddedildi';
   return s;
+}
+
+/* ── PAYMENT PORTAL (ADMIN) ── */
+function openPaymentPortal() {
+  getEl('paymentPortalOverlay').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  
+  // Set default dates (last 30 days)
+  const end = new Date();
+  const start = new Date(); start.setDate(end.getDate() - 30);
+  const fmt = d => d.toISOString().split('T')[0];
+  
+  if (!getEl('payStart').value) getEl('payStart').value = fmt(start);
+  if (!getEl('payEnd').value) getEl('payEnd').value = fmt(end);
+  
+  loadPayments();
+}
+
+function closePaymentPortal() {
+  getEl('paymentPortalOverlay').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+async function loadPayments() {
+  const search = getEl('paySearch').value;
+  const method = getEl('payMethod').value;
+  const start  = getEl('payStart').value;
+  const end    = getEl('payEnd').value;
+  
+  const list = getEl('payList');
+  list.innerHTML = '<tr><td colspan="8" class="center" style="padding:40px"><div class="gold-loader"></div></td></tr>';
+  
+  try {
+    let url = `${API}/api/payments?startDate=${start}&endDate=${end}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    if (method !== 'Tüm Yöntemler') url += `&method=${encodeURIComponent(method)}`;
+    
+    const res = await fetch(url);
+    const data = await res.json();
+    
+    list.innerHTML = '';
+    if (data.length === 0) {
+      list.innerHTML = '<tr><td colspan="8" class="center" style="padding:40px; color:var(--muted)">Kayıt bulunamadı.</td></tr>';
+    }
+    
+    data.forEach(p => {
+      const tr = document.createElement('tr');
+      tr.className = 'fade-in-up';
+      tr.innerHTML = `
+        <td class="td-id">#${p.id}</td>
+        <td class="td-guest">${p.guestName}</td>
+        <td><span class="td-room">${p.roomNumber}</span></td>
+        <td class="td-id">#${p.reservationId}</td>
+        <td class="td-amt">${fmt(p.amount)} ₺</td>
+        <td class="td-method">${p.paymentMethodDisplay}</td>
+        <td class="td-date">${new Date(p.paymentDate).toLocaleString('tr-TR')}</td>
+        <td style="font-size:0.75rem; color:var(--muted); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${p.notes || ''}">${p.notes || '-'}</td>
+      `;
+      list.appendChild(tr);
+    });
+
+    // Load Stats
+    loadPaymentStats();
+
+  } catch (e) {
+    list.innerHTML = '<tr><td colspan="8" class="center" style="padding:40px; color:var(--red)">Veriler yüklenemedi.</td></tr>';
+  }
+}
+
+async function loadPaymentStats() {
+  try {
+    const res = await fetch(`${API}/api/payments/stats`);
+    const stats = await res.json();
+    
+    const footer = getEl('payStats');
+    footer.innerHTML = '';
+    
+    let totalAll = 0;
+    stats.forEach(s => {
+      totalAll += s.total;
+      const box = document.createElement('div');
+      box.className = 'p-stat-box';
+      box.innerHTML = `
+        <label>${s.method}</label>
+        <strong>${fmt(s.total)} ₺</strong>
+        <span>${s.count} İşlem</span>
+      `;
+      footer.appendChild(box);
+    });
+
+    // Toplam box
+    if (stats.length > 0) {
+        const totalBox = document.createElement('div');
+        totalBox.className = 'p-stat-box';
+        totalBox.style.borderLeft = '4px solid var(--gold)';
+        totalBox.innerHTML = `
+            <label>TOPLAM GELİR</label>
+            <strong style="color:var(--white); font-size:1.4rem;">${fmt(totalAll)} ₺</strong>
+            <span style="color:var(--gold)">Genel Toplam</span>
+        `;
+        footer.prepend(totalBox);
+    }
+  } catch (e) {}
 }
 
 async function trackReservationMain() {

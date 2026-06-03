@@ -23,24 +23,73 @@
       </div>
     </a>
     <nav class="nav">
-      <a href="#about">Hakkımızda</a>
+      <a href="#top">Anasayfa</a>
       <a href="#rooms-section">Odalar</a>
-      <a href="#amenities">Olanaklar</a>
       <a href="#contact">İletişim</a>
-      <button onclick="openPortal()" class="nav-portal-btn">👤 Profilim</button>
-      <a href="javascript:void(0)" class="nav-admin" onclick="showToast('Yönetim paneli masaüstü uygulamasından erişilebilir.','')" title="Masaüstü uygulaması gerekir">⚙ Yönetim</a>
+      <button onclick="openPortal()" class="nav-portal-btn" style="padding: 8px 15px; font-size: 0.8rem;">👤 Profilim</button>
     </nav>
-    <a href="#rooms-section" class="btn-header-gold">Rezervasyon Yap</a>
+    <a href="#rooms-section" class="btn-header-gold">Hemen Yer Ayır</a>
     <button class="hamburger" id="hamburger" onclick="toggleMenu()">☰</button>
   </div>
   <div class="mobile-nav" id="mobileNav">
+    <a href="#top" onclick="toggleMenu()">Anasayfa</a>
     <a href="#rooms-section" onclick="toggleMenu()">Odalar</a>
-    <a href="#amenities" onclick="toggleMenu()">Olanaklar</a>
     <a href="#contact" onclick="toggleMenu()">İletişim</a>
-    <a href="javascript:openPortal()" onclick="toggleMenu()">👤 Rezervasyonlarım (Profil)</a>
-    <a href="javascript:void(0)" onclick="toggleMenu(); showToast('Yönetim paneli masaüstü uygulamasından erişilebilir.','');">⚙ Yönetim</a>
+    <a href="javascript:openPortal()" onclick="toggleMenu()">👤 Profilim</a>
   </div>
 </header>
+
+<!-- ════ ÖDEME PORTALI (YÖNETİM) ════ -->
+<div class="portal-overlay hidden" id="paymentPortalOverlay">
+  <div class="portal-container" style="max-width: 1200px; width: 95%;">
+    <button class="portal-close" onclick="closePaymentPortal()">✕</button>
+    <div class="portal-header">
+      <div class="logo-emblem">₺</div>
+      <h2>Ödeme Yönetim Merkezi</h2>
+      <p>Otel tahsilatlarını izleyin, filtreleyin ve finansal durumu takip edin.</p>
+    </div>
+
+    <!-- Filtreler -->
+    <div class="payment-filters">
+      <input type="text" id="paySearch" placeholder="🔍 Misafir, Oda, Rez. ID veya Not ara..." oninput="loadPayments()"/>
+      <select id="payMethod" onchange="loadPayments()">
+        <option value="Tüm Yöntemler">Tüm Yöntemler</option>
+        <option value="Nakit">💵 Nakit</option>
+        <option value="Kredi Karti">💳 Kredi Kartı</option>
+        <option value="Havale">🏦 Havale</option>
+        <option value="Diger">📋 Diğer</option>
+      </select>
+      <input type="date" id="payStart" onchange="loadPayments()"/>
+      <input type="date" id="payEnd" onchange="loadPayments()"/>
+      <button class="btn-hero-primary" style="padding: 10px 20px; font-size: 0.8rem;" onclick="loadPayments()">🔄 Yenile</button>
+    </div>
+
+    <div class="pay-table-wrap" id="payTableWrap">
+      <table class="pay-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>MİSAFİR ADI</th>
+            <th>ODA</th>
+            <th>REZ. ID</th>
+            <th>TUTAR</th>
+            <th>YÖNTEM</th>
+            <th>TARİH</th>
+            <th>NOTLAR</th>
+          </tr>
+        </thead>
+        <tbody id="payList">
+          <!-- Ödemeler buraya gelecek -->
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="payment-stats-footer" id="payStats">
+      <!-- İstatistikler buraya gelecek -->
+    </div>
+  </div>
+</div>
+
 
 <!-- HERO -->
 <section class="hero" id="top">
@@ -258,78 +307,87 @@
           <h2>Rezervasyon Yap</h2>
         </div>
 
-        <!-- Tarihler -->
-        <div class="form-section-title">📅 Konaklama Tarihleri</div>
-        <div class="form-row-2">
-          <div class="fg">
-            <label>Giriş Tarihi *</label>
-            <input type="date" id="rCheckIn"/>
+        <!-- STEP 1: BİLGİLER -->
+        <div id="resStep1">
+          <div class="form-section-title">📅 Konaklama Tarihleri</div>
+          <div class="form-row-2">
+            <div class="fg">
+              <label>Giriş Tarihi *</label>
+              <input type="date" id="rCheckIn"/>
+            </div>
+            <div class="fg">
+              <label>Çıkış Tarihi *</label>
+              <input type="date" id="rCheckOut"/>
+            </div>
           </div>
-          <div class="fg">
-            <label>Çıkış Tarihi *</label>
-            <input type="date" id="rCheckOut"/>
-          </div>
-        </div>
 
-        <div class="form-section-title" style="margin-top:20px">👤 Kişisel Bilgiler</div>
-        <div class="fg">
-          <label>Ad Soyad *</label>
-          <input type="text" id="rName" placeholder="Örn: Ahmet Yılmaz"/>
+          <div class="form-section-title" style="margin-top:20px">👤 Kişisel Bilgiler</div>
+          <div class="fg">
+            <label>Ad Soyad *</label>
+            <input type="text" id="rName" placeholder="Örn: Ahmet Yılmaz"/>
+          </div>
+          <div class="form-row-2">
+            <div class="fg">
+              <label>E-posta *</label>
+              <input type="email" id="rEmail" placeholder="email@ornek.com"/>
+            </div>
+            <div class="fg">
+              <label>Telefon</label>
+              <input type="tel" id="rPhone" placeholder="05XX XXX XX XX"/>
+            </div>
+          </div>
+          <div class="form-row-2">
+            <div class="fg">
+              <label>TC Kimlik No</label>
+              <input type="text" id="rTc" maxlength="11" placeholder="Yabancı ise boş"/>
+            </div>
+            <div class="fg">
+              <label>Uyruk</label>
+              <select id="rNat">
+                <option value="Türkiye" selected>🇹🇷 Türkiye</option>
+                <option value="USA">🇺🇸 Amerika</option>
+                <option value="Germany">🇩🇪 Almanya</option>
+                <option value="UK">🇬🇧 İngiltere</option>
+                <option value="France">🇫🇷 Fransa</option>
+                <option value="Russia">🇷🇺 Rusya</option>
+                <option value="Other">🌍 Diğer</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row-2">
+            <div class="fg">
+              <label>Yetişkin</label>
+              <select id="rAdults"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option></select>
+            </div>
+            <div class="fg">
+              <label>Çocuk</label>
+              <select id="rChildren"><option value="0" selected>0</option><option value="1">1</option><option value="2">2</option></select>
+            </div>
+          </div>
+          <div class="fg">
+            <label>Özel İstekler</label>
+            <textarea id="rNotes" rows="2" placeholder="Kat tercihi, erken giriş, ekstra yatak…"></textarea>
+          </div>
+          
+          <div class="price-summary" id="priceSummary"></div>
+          
+          <button class="btn-reserve-big" onclick="downloadPreviewPdf()" style="background: rgba(255,255,255,0.05); border: 1px dashed var(--gold); color: #fff; margin-bottom: 10px; width: 100%;">
+            📄 Rezervasyon Özeti PDF İndir (Önizleme)
+          </button>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <button class="btn-reserve-big" onclick="redirectToPayment()" style="margin-bottom: 0;">
+              💳 Şimdi Öde<br/><small style="font-size: 0.6em; opacity: 0.8;">Hemen Onay Alın</small>
+            </button>
+            <button class="btn-reserve-big" onclick="submitWithoutPayment(event)" style="background: var(--dark3); border: 1px solid var(--gold); color: var(--gold); margin-bottom: 0;">
+              🏨 Otelde Öde<br/><small style="font-size: 0.6em; opacity: 0.8;">Varışta Ödeme Yapın</small>
+            </button>
+          </div>
+          <button class="btn-cancel-modal" style="margin-top: 15px;" onclick="closeFModal()">İptal</button>
         </div>
-        <div class="form-row-2">
-          <div class="fg">
-            <label>E-posta *</label>
-            <input type="email" id="rEmail" placeholder="email@ornek.com"/>
-          </div>
-          <div class="fg">
-            <label>Telefon</label>
-            <input type="tel" id="rPhone" placeholder="05XX XXX XX XX"/>
-          </div>
-        </div>
-        <div class="form-row-2">
-          <div class="fg">
-            <label>TC Kimlik No</label>
-            <input type="text" id="rTc" maxlength="11" placeholder="Yabancı ise boş"/>
-          </div>
-          <div class="fg">
-            <label>Uyruk</label>
-            <select id="rNat">
-              <option value="Türkiye" selected>🇹🇷 Türkiye</option>
-              <option value="USA">🇺🇸 Amerika</option>
-              <option value="Germany">🇩🇪 Almanya</option>
-              <option value="UK">🇬🇧 İngiltere</option>
-              <option value="France">🇫🇷 Fransa</option>
-              <option value="Russia">🇷🇺 Rusya</option>
-              <option value="Other">🌍 Diğer</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-row-2">
-          <div class="fg">
-            <label>Yetişkin</label>
-            <select id="rAdults"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option></select>
-          </div>
-          <div class="fg">
-            <label>Çocuk</label>
-            <select id="rChildren"><option value="0" selected>0</option><option value="1">1</option><option value="2">2</option></select>
-          </div>
-        </div>
-        <div class="fg">
-          <label>Özel İstekler</label>
-          <textarea id="rNotes" rows="2" placeholder="Kat tercihi, erken giriş, ekstra yatak…"></textarea>
-        </div>
-
-        <!-- Fiyat Özeti -->
-        <div class="price-summary" id="priceSummary"></div>
-
-        <button class="btn-reserve-big" id="submitBtn" onclick="submitReservation()">
-          <span id="submitText">✦ Rezervasyonu Tamamla</span>
-          <span id="submitSpinner" class="spinner hidden"></span>
-        </button>
-        <button class="btn-cancel-modal" onclick="closeFModal()">Vazgeç</button>
       </div>
 
-      <!-- Başarı Ekranı -->
+      <!-- Başarı Ekranı (Nakit/Sonradan Ödeme durumları için kalabilir veya tamamen kaldırılabilir, ama şu an kalsın) -->
       <div class="fmodal-success hidden" id="fmodalSuccess">
         <div class="success-circle">✓</div>
         <h2>Rezervasyonunuz Alındı!</h2>

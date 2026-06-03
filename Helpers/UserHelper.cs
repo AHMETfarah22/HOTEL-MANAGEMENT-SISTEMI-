@@ -48,13 +48,14 @@ namespace ORYS.Helpers
             return null;
         }
 
-        public static void AddUser(User user)
+        public static int AddUser(User user)
         {
             using (var conn = DatabaseHelper.GetConnection())
             {
                 conn.Open();
                 string query = @"INSERT INTO users (full_name, username, password, role, email, phone) 
-                                 VALUES (@full_name, @username, @password, @role, @email, @phone)";
+                                 VALUES (@full_name, @username, @password, @role, @email, @phone);
+                                 SELECT LAST_INSERT_ID();";
                 using (var cmd = new MySqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@full_name", user.FullName);
@@ -63,7 +64,7 @@ namespace ORYS.Helpers
                     cmd.Parameters.AddWithValue("@role", user.Role);
                     cmd.Parameters.AddWithValue("@email", string.IsNullOrWhiteSpace(user.Email) ? DBNull.Value : user.Email);
                     cmd.Parameters.AddWithValue("@phone", string.IsNullOrWhiteSpace(user.Phone) ? DBNull.Value : user.Phone);
-                    cmd.ExecuteNonQuery();
+                    return Convert.ToInt32(cmd.ExecuteScalar());
                 }
             }
         }

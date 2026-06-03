@@ -23,6 +23,10 @@ namespace ORYS.Database
             {
                 if (string.IsNullOrEmpty(_connectionString))
                 {
+                    // .env dosyasını yükle
+                    LoadEnvFile(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".env"));
+                    LoadEnvFile(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", ".env"));
+                    
                     try
                     {
                         string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json");
@@ -42,10 +46,46 @@ namespace ORYS.Database
                     }
                     catch { } // fallback to defaults
 
+                    // Çevre değişkenleri varsa config.json'u override et
+                    var envServer = Environment.GetEnvironmentVariable("DB_SERVER");
+                    var envPort = Environment.GetEnvironmentVariable("DB_PORT");
+                    var envName = Environment.GetEnvironmentVariable("DB_NAME");
+                    var envUser = Environment.GetEnvironmentVariable("DB_USER");
+                    var envPass = Environment.GetEnvironmentVariable("DB_PASSWORD");
+
+                    if (!string.IsNullOrEmpty(envServer)) Server = envServer;
+                    if (!string.IsNullOrEmpty(envPort)) Port = envPort;
+                    if (!string.IsNullOrEmpty(envName)) DatabaseName = envName;
+                    if (!string.IsNullOrEmpty(envUser)) UserId = envUser;
+                    if (envPass != null) Password = envPass; // Boş şifre de geçerli olabilir
+
                     _connectionString = $"Server={Server};Port={Port};Database={DatabaseName};Uid={UserId};Pwd={Password};SslMode=Preferred;";
                 }
                 return _connectionString;
             }
+        }
+
+        /// <summary>
+        /// .env dosyasını okuyup çevre değişkenlerini yükler
+        /// </summary>
+        private static void LoadEnvFile(string path)
+        {
+            if (!File.Exists(path)) return;
+            try
+            {
+                foreach (var line in File.ReadAllLines(path))
+                {
+                    var trimmed = line.Trim();
+                    if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith("#")) continue;
+                    var eqIndex = trimmed.IndexOf('=');
+                    if (eqIndex <= 0) continue;
+                    var key = trimmed[..eqIndex].Trim();
+                    var value = trimmed[(eqIndex + 1)..].Trim();
+                    if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(key)))
+                        Environment.SetEnvironmentVariable(key, value);
+                }
+            }
+            catch { }
         }
 
         public static MySqlConnection GetConnection()
@@ -128,6 +168,7 @@ namespace ORYS.Database
                         `capacity` INT NOT NULL DEFAULT 2,
                         `price_per_night` DECIMAL(10,2) NOT NULL DEFAULT 0,
                         `status` ENUM('Available', 'Occupied', 'Reserved', 'Maintenance') DEFAULT 'Available',
+                        `cleaning_status` ENUM('Clean', 'Dirty', 'Cleaning') DEFAULT 'Clean',
                         `description` TEXT,
                         `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
                         `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -166,6 +207,10 @@ namespace ORYS.Database
                         `children` INT DEFAULT 0,
                         `status` ENUM('Bekliyor', 'Onaylandi', 'GirisYapildi', 'CikisYapildi', 'Iptal') DEFAULT 'Bekliyor',
                         `total_price` DECIMAL(10,2) DEFAULT 0,
+                        `include_breakfast` TINYINT(1) DEFAULT 0,
+                        `breakfast_price` DECIMAL(10,2) DEFAULT 0,
+                        `include_dinner` TINYINT(1) DEFAULT 0,
+                        `dinner_price` DECIMAL(10,2) DEFAULT 0,
                         `notes` TEXT,
                         `created_by` INT,
                         `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -176,6 +221,18 @@ namespace ORYS.Database
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
                 using (var cmd = new MySqlCommand(createReservations, connection))
                     cmd.ExecuteNonQuery();
+
+                // Check for new columns in reservations table
+                string[] newCols = { 
+                    "ALTER TABLE `reservations` ADD COLUMN IF NOT EXISTS `include_breakfast` TINYINT(1) DEFAULT 0",
+                    "ALTER TABLE `reservations` ADD COLUMN IF NOT EXISTS `breakfast_price` DECIMAL(10,2) DEFAULT 0",
+                    "ALTER TABLE `reservations` ADD COLUMN IF NOT EXISTS `include_dinner` TINYINT(1) DEFAULT 0",
+                    "ALTER TABLE `reservations` ADD COLUMN IF NOT EXISTS `dinner_price` DECIMAL(10,2) DEFAULT 0"
+                };
+                foreach (var colCmd in newCols)
+                {
+                    try { using (var cmd = new MySqlCommand(colCmd, connection)) cmd.ExecuteNonQuery(); } catch { }
+                }
 
                 // ===================== ÖDEMELER =====================
                 string createPayments = @"
@@ -193,6 +250,125 @@ namespace ORYS.Database
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
                 using (var cmd = new MySqlCommand(createPayments, connection))
                     cmd.ExecuteNonQuery();
+
+                // ===================== KAT HİZMETLERİ LOGLARI =====================
+                string createHousekeeping = @"
+                    CREATE TABLE IF NOT EXISTS `housekeeping_logs` (
+                        `id` INT AUTO_INCREMENT PRIMARY KEY,
+                        `room_id` INT NOT NULL,
+                        `staff_id` INT,
+                        `status_from` ENUM('Clean', 'Dirty', 'Cleaning'),
+                        `status_to` ENUM('Clean', 'Dirty', 'Cleaning'),
+                        `notes` TEXT,
+                        `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (`room_id`) REFERENCES `rooms`(`id`),
+                        FOREIGN KEY (`staff_id`) REFERENCES `users`(`id`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+                using (var cmd = new MySqlCommand(createHousekeeping, connection))
+                    cmd.ExecuteNonQuery();
+
+                // ===================== RESTORAN TABLOLARI =====================
+                string createRestaurant = @"
+                    CREATE TABLE IF NOT EXISTS `restaurant_categories` (
+                        `id` INT AUTO_INCREMENT PRIMARY KEY,
+                        `name` VARCHAR(50) NOT NULL
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+                    CREATE TABLE IF NOT EXISTS `restaurant_products` (
+                        `id` INT AUTO_INCREMENT PRIMARY KEY,
+                        `category_id` INT,
+                        `name` VARCHAR(100) NOT NULL,
+                        `price` DECIMAL(10,2) NOT NULL,
+                        `is_active` TINYINT(1) DEFAULT 1,
+                        FOREIGN KEY (`category_id`) REFERENCES `restaurant_categories`(`id`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+                    CREATE TABLE IF NOT EXISTS `restaurant_orders` (
+                        `id` INT AUTO_INCREMENT PRIMARY KEY,
+                        `room_id` INT, -- Null ise masaya satış
+                        `table_number` VARCHAR(20),
+                        `total_amount` DECIMAL(10,2) NOT NULL,
+                        `status` ENUM('Aktif', 'Tamamlandi', 'Iptal', 'OdayaYazildi') DEFAULT 'Aktif',
+                        `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (`room_id`) REFERENCES `rooms`(`id`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+                    CREATE TABLE IF NOT EXISTS `restaurant_order_items` (
+                        `id` INT AUTO_INCREMENT PRIMARY KEY,
+                        `order_id` INT NOT NULL,
+                        `product_id` INT NOT NULL,
+                        `quantity` INT NOT NULL,
+                        `unit_price` DECIMAL(10,2) NOT NULL,
+                        FOREIGN KEY (`order_id`) REFERENCES `restaurant_orders`(`id`),
+                        FOREIGN KEY (`product_id`) REFERENCES `restaurant_products`(`id`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+                using (var cmd = new MySqlCommand(createRestaurant, connection))
+                    cmd.ExecuteNonQuery();
+
+                // ===================== TEKNİK SERVİS (BAKIM) =====================
+                string createMaintenance = @"
+                    CREATE TABLE IF NOT EXISTS `maintenance_requests` (
+                        `id` INT AUTO_INCREMENT PRIMARY KEY,
+                        `room_id` INT, -- Null ise genel alan arızası
+                        `category` VARCHAR(50) NOT NULL, -- Elektrik, Su, Mobilya, Klima vs.
+                        `description` TEXT NOT NULL,
+                        `priority` ENUM('Düşük', 'Orta', 'Yüksek', 'Acil') DEFAULT 'Orta',
+                        `status` ENUM('Bekliyor', 'Devam Ediyor', 'Tamamlandi', 'Iptal') DEFAULT 'Bekliyor',
+                        `reported_by` INT,
+                        `assigned_to` VARCHAR(100),
+                        `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        FOREIGN KEY (`room_id`) REFERENCES `rooms`(`id`),
+                        FOREIGN KEY (`reported_by`) REFERENCES `users`(`id`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+                using (var cmd = new MySqlCommand(createMaintenance, connection))
+                    cmd.ExecuteNonQuery();
+
+                // ===================== PERSONEL DETAYLARI =====================
+                string createEmployeeDetails = @"
+                    CREATE TABLE IF NOT EXISTS `employee_details` (
+                        `id` INT AUTO_INCREMENT PRIMARY KEY,
+                        `user_id` INT NOT NULL UNIQUE,
+                        `position` VARCHAR(100),
+                        `salary` DECIMAL(10,2) DEFAULT 0,
+                        `hire_date` DATE,
+                        `shift` ENUM('Gündüz', 'Gece', 'Vardiyalı') DEFAULT 'Gündüz',
+                        `iban` VARCHAR(34),
+                        `emergency_contact` VARCHAR(100),
+                        FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+                using (var cmd = new MySqlCommand(createEmployeeDetails, connection))
+                    cmd.ExecuteNonQuery();
+
+                // ===================== STOK / ENVANTER =====================
+                string createInventory = @"
+                    CREATE TABLE IF NOT EXISTS `inventory_items` (
+                        `id` INT AUTO_INCREMENT PRIMARY KEY,
+                        `name` VARCHAR(100) NOT NULL,
+                        `category` VARCHAR(50), -- Temizlik, Restoran, Teknik, Tekstil vs.
+                        `quantity` DECIMAL(10,2) DEFAULT 0,
+                        `unit` VARCHAR(20) DEFAULT 'Adet',
+                        `min_stock` DECIMAL(10,2) DEFAULT 0,
+                        `last_price` DECIMAL(10,2) DEFAULT 0
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+                    CREATE TABLE IF NOT EXISTS `inventory_logs` (
+                        `id` INT AUTO_INCREMENT PRIMARY KEY,
+                        `item_id` INT NOT NULL,
+                        `type` ENUM('Giriş', 'Çıkış') NOT NULL,
+                        `quantity` DECIMAL(10,2) NOT NULL,
+                        `notes` TEXT,
+                        `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (`item_id`) REFERENCES `inventory_items`(`id`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+                using (var cmd = new MySqlCommand(createInventory, connection))
+                    cmd.ExecuteNonQuery();
+
+                // Mevcut tablolara eksik sütunları ekle (Migration desteği)
+                try {
+                    using (var cmd = new MySqlCommand("ALTER TABLE `rooms` ADD COLUMN `cleaning_status` ENUM('Clean', 'Dirty', 'Cleaning') DEFAULT 'Clean' AFTER `status`", connection))
+                        cmd.ExecuteNonQuery();
+                } catch { /* Sütun zaten varsa hata verir, yoksay */ }
 
                 // ===================== VARSAYILAN VERİLER =====================
 
@@ -361,6 +537,44 @@ namespace ORYS.Database
                         (6, 30, '{tomorrow}', '{nextWeek}', 2, 0, 'Bekliyor', 42000.00, 1),
                         (3, 37, '{yesterday}', '{nextWeek}', 2, 0, 'GirisYapildi', 17500.00, 1);";
                     using (var cmd = new MySqlCommand(insertRes, connection))
+                        cmd.ExecuteNonQuery();
+                }
+
+                // Varsayılan Restoran Verileri
+                string checkRest = "SELECT COUNT(*) FROM `restaurant_categories`";
+                long restCatCount = 0;
+                using (var cmd = new MySqlCommand(checkRest, connection))
+                    restCatCount = (long)cmd.ExecuteScalar();
+
+                if (restCatCount == 0)
+                {
+                    string insertRest = @"
+                        INSERT INTO `restaurant_categories` (`id`, `name`) VALUES (1, 'Sıcak İçecekler'), (2, 'Soğuk İçecekler'), (3, 'Ana Yemekler'), (4, 'Tatlılar');
+                        INSERT INTO `restaurant_products` (`category_id`, `name`, `price`) VALUES 
+                        (1, 'Türk Kahvesi', 80.00), (1, 'Çay', 30.00), (1, 'Filtre Kahve', 110.00),
+                        (2, 'Coca Cola', 65.00), (2, 'Su 0.5L', 20.00), (2, 'Taze Portakal Suyu', 95.00),
+                        (3, 'Izgara Köfte', 420.00), (3, 'Tavuk Şiş', 380.00), (3, 'Hamburger Menü', 350.00),
+                        (4, 'Sütlaç', 120.00), (4, 'Baklava (Porsiyon)', 180.00);";
+                    using (var cmd = new MySqlCommand(insertRest, connection))
+                        cmd.ExecuteNonQuery();
+                }
+
+                // Varsayılan Stok Verileri
+                string checkInv = "SELECT COUNT(*) FROM `inventory_items`";
+                long invCount = 0;
+                using (var cmd = new MySqlCommand(checkInv, connection))
+                    invCount = (long)cmd.ExecuteScalar();
+
+                if (invCount == 0)
+                {
+                    string insertInv = @"
+                        INSERT INTO `inventory_items` (`name`, `category`, `quantity`, `unit`, `min_stock`) VALUES 
+                        ('Banyo Sabunu', 'Temizlik', 150, 'Adet', 20),
+                        ('Şampuan (Küçük)', 'Temizlik', 200, 'Adet', 50),
+                        ('Havlu Seti', 'Tekstil', 80, 'Adet', 10),
+                        ('Tuvalet Kağıdı', 'Temizlik', 12, 'Paket', 5),
+                        ('Kahve Çekirdeği', 'Restoran', 5, 'KG', 2);";
+                    using (var cmd = new MySqlCommand(insertInv, connection))
                         cmd.ExecuteNonQuery();
                 }
             }

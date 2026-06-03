@@ -251,7 +251,29 @@ a { color: inherit; text-decoration: none; transition: var(--transition); }
   -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
 }
 .room-status-tag.avail { background: rgba(39,174,96,.15); color: #2ECC71; border: 1px solid rgba(39,174,96,.4); }
-.room-status-tag.busy  { background: rgba(192,57,43,.15); color: #E74C3C; border: 1px solid rgba(192,57,43,.4); }
+.room-status-tag.busy  { background: rgba(192,57,43,.15); color: #E74C3C; border: 1px solid rgba(192,57,43,.4); box-shadow: 0 0 15px rgba(192,57,43,0.2); }
+
+/* Occupied Room State */
+.room-card.occupied {
+  opacity: 0.85;
+  filter: grayscale(0.2);
+}
+.room-card.occupied:hover {
+  border-color: var(--red);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(192,57,43,0.15);
+}
+.room-card.occupied .room-img-gradient {
+  background: linear-gradient(to top, rgba(192,57,43,.4) 0%, rgba(0,0,0,.1) 50%, transparent 100%);
+}
+.room-card.occupied .room-price-big {
+  color: var(--muted);
+}
+.room-card.occupied .btn-sec-card {
+  background: var(--red);
+  color: var(--white);
+  cursor: not-allowed;
+}
 
 /* Room Body */
 .room-body { padding: 20px 22px 0; flex: 1; }
@@ -605,3 +627,73 @@ a { color: inherit; text-decoration: none; transition: var(--transition); }
   border-radius: 20px; padding: 24px; transition: var(--transition);
 }
 .tracking-item:hover { border-color: var(--gold); transform: translateY(-5px); }
+
+/* ── PAYMENT PORTAL SPECIFIC ── */
+.payment-filters {
+  display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
+  background: rgba(255,255,255,0.02); padding: 15px; border-radius: 18px;
+  border: 1px solid rgba(201,168,76,0.1);
+}
+.payment-filters input, .payment-filters select {
+  background: var(--dark4); border: 1px solid rgba(255,255,255,0.1);
+  color: #fff; padding: 12px 16px; border-radius: 12px; outline: none; font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+.payment-filters input:focus, .payment-filters select:focus { border-color: var(--gold); background: rgba(201,168,76,0.05); }
+
+.payment-filters input[type="text"] { flex: 3; min-width: 250px; }
+.payment-filters select, .payment-filters input[type="date"] { flex: 1; min-width: 140px; }
+
+/* Management Table */
+.pay-table-wrap { width: 100%; overflow-x: auto; border-radius: 16px; border: 1px solid rgba(255,255,255,0.06); }
+.pay-table { width: 100%; border-collapse: collapse; background: rgba(255,255,255,0.01); color: var(--text); font-size: 0.9rem; min-width: 800px; }
+.pay-table th { background: rgba(201,168,76,0.1); color: var(--gold); text-align: left; padding: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 0.7rem; border-bottom: 1px solid rgba(201,168,76,0.2); }
+.pay-table td { padding: 14px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
+.pay-table tr:hover { background: rgba(255,255,255,0.03); }
+
+.td-id { color: var(--muted); font-family: monospace; font-size: 0.8rem; }
+.td-guest { font-weight: 600; color: #fff; }
+.td-room { display: inline-block; background: rgba(201,168,76,0.15); color: var(--gold); padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; }
+.td-amt { font-family: var(--serif); font-weight: 700; color: var(--gold2); font-size: 1.1rem; }
+.td-method { font-size: 0.8rem; }
+.td-date { font-size: 0.8rem; color: var(--muted); }
+
+.payment-stats-footer {
+  margin-top: 25px; padding: 20px; background: rgba(8,9,16,0.5); border: 1px solid rgba(201,168,76,0.15);
+  border-radius: 20px; display: flex; gap: 15px; overflow-x: auto;
+}
+.p-stat-box { 
+  flex: 1; min-width: 160px; background: linear-gradient(135deg, rgba(201,168,76,0.1), transparent); 
+  padding: 12px 18px; border-radius: 14px; border: 1px solid rgba(201,168,76,0.2);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.p-stat-box label { color: var(--muted); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; }
+.p-stat-box strong { color: var(--gold); font-size: 1.1rem; font-family: var(--serif); }
+.p-stat-box span { color: var(--gold2); font-size: 0.75rem; font-weight: 600; }
+
+/* ── CREDIT CARD VISUAL ── */
+.card-visual-wrap {
+  perspective: 1000px; margin: 0 auto 25px; width: 100%; max-width: 320px; height: 190px;
+}
+.card-front {
+  width: 100%; height: 100%; background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+  border-radius: 15px; padding: 25px; position: relative; color: var(--dark);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+  display: flex; flex-direction: column; justify-content: space-between;
+  text-transform: uppercase; letter-spacing: 1px;
+}
+.card-chip {
+  width: 45px; height: 35px; background: linear-gradient(135deg, #eee, #999);
+  border-radius: 5px; position: relative;
+}
+.card-chip::after {
+  content: ''; position: absolute; inset: 5px; border: 1px solid rgba(0,0,0,0.1); border-radius: 3px;
+}
+.card-number-preview {
+  font-family: 'Courier New', Courier, monospace; font-size: 1.3rem; font-weight: 700;
+  letter-spacing: 2px; margin: 20px 0;
+}
+.card-bottom { display: flex; justify-content: space-between; align-items: flex-end; }
+.card-holder-preview { font-size: 0.75rem; font-weight: 700; max-width: 180px; overflow: hidden; white-space: nowrap; }
+.card-expiry-preview { font-size: 0.75rem; font-weight: 700; }
+

@@ -54,10 +54,14 @@ namespace ORYS.WebApi.Database
                         `adults`          INT DEFAULT 1,
                         `children`        INT DEFAULT 0,
                         `total_price`     DECIMAL(10,2),
+                        `is_paid`         BOOLEAN DEFAULT FALSE,
+                        `payment_method`  VARCHAR(50) NULL,
+                        `payment_notes`   TEXT NULL,
                         `notes`           TEXT,
-                        `status`          ENUM('Bekliyor','Onaylandi','Reddedildi') DEFAULT 'Bekliyor',
+                        `status`          ENUM('Bekliyor','Onaylandi','Reddedildi','IptalEdildi') DEFAULT 'Bekliyor',
                         `internal_res_id` INT NULL,
                         `reject_reason`   TEXT NULL,
+                        `reject_message`  TEXT NULL,
                         `created_at`      DATETIME DEFAULT CURRENT_TIMESTAMP,
                         FOREIGN KEY (`room_id`) REFERENCES `rooms`(`id`)
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
@@ -69,7 +73,31 @@ namespace ORYS.WebApi.Database
                 try {
                     using var alterCmd = new MySqlCommand("ALTER TABLE `online_reservations` ADD COLUMN `res_code` VARCHAR(10) UNIQUE NULL AFTER `id` ", conn);
                     alterCmd.ExecuteNonQuery();
-                } catch { /* Muhtemelen zaten var */ }
+                } catch { }
+                try {
+                    using var alterCmd = new MySqlCommand("ALTER TABLE `online_reservations` ADD COLUMN `is_paid` BOOLEAN DEFAULT FALSE AFTER `total_price` ", conn);
+                    alterCmd.ExecuteNonQuery();
+                } catch { }
+                try {
+                    using var alterCmd = new MySqlCommand("ALTER TABLE `online_reservations` ADD COLUMN `payment_method` VARCHAR(50) NULL AFTER `is_paid` ", conn);
+                    alterCmd.ExecuteNonQuery();
+                } catch { }
+                try {
+                    using var alterCmd = new MySqlCommand("ALTER TABLE `online_reservations` ADD COLUMN `payment_notes` TEXT NULL AFTER `payment_method` ", conn);
+                    alterCmd.ExecuteNonQuery();
+                } catch { }
+                try {
+                    using var alterCmd = new MySqlCommand("ALTER TABLE `online_reservations` ADD COLUMN `reject_message` TEXT NULL AFTER `reject_reason` ", conn);
+                    alterCmd.ExecuteNonQuery();
+                } catch { }
+                try {
+                    using var alterCmd = new MySqlCommand("ALTER TABLE `online_reservations` ADD COLUMN `pdf_path` VARCHAR(255) NULL AFTER `is_paid` ", conn);
+                    alterCmd.ExecuteNonQuery();
+                } catch { }
+                try {
+                    using var alterCmd = new MySqlCommand("ALTER TABLE `online_reservations` ADD COLUMN `receipt_path` VARCHAR(255) NULL AFTER `pdf_path` ", conn);
+                    alterCmd.ExecuteNonQuery();
+                } catch { }
 
                 Console.WriteLine("✅ online_reservations tablosu hazır.");
 
